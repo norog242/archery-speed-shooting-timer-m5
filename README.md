@@ -1,4 +1,6 @@
+-------------------------------------
 ==== ARCHERY SPEEDSHOOTING TIMER ====
+-------------------------------------
 
 Detects Arrow impacts. Measusres the duration from the first to the 10th arrow.
 Displays arrow count and final time on device and on a webUI.
