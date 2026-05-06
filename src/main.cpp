@@ -190,7 +190,7 @@ void loop() {
           M5.Lcd.printf("%d", arrows);
           M5.Lcd.setTextSize(2); // Restore default size
         }
-        delay(350); // Debounce for step detection
+        delay(350); // Debounce for impact detection
       }
     }
   } else {
