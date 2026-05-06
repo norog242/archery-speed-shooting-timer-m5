@@ -1,3 +1,24 @@
+// Auto-rotation state
+int lastRotation = -1;
+
+// Determine rotation based on accelerometer data
+void updateScreenRotation() {
+  float accX, accY, accZ;
+  M5.Imu.getAccelData(&accX, &accY, &accZ);
+  int rotation = 0;
+  if (fabs(accX) > fabs(accY)) {
+    if (accX > 0.5) rotation = 1; // left
+    else if (accX < -0.5) rotation = 3; // right
+    else rotation = 0; // default
+  } else {
+    if (accY > 0.5) rotation = 2; // upside down
+    else rotation = 0; // default
+  }
+  if (rotation != lastRotation) {
+    M5.Lcd.setRotation(rotation);
+    lastRotation = rotation;
+  }
+}
 
 // M5 Atom S3 Step Counter/Timer Conversion from micro:bit
 
@@ -32,10 +53,10 @@ String getHtml() {
       }
       .segment {
         font-family: 'Digital7', monospace;
-        font-size: 3em;
-        color: #e53935;
+        font-size: 4em;
+        color: #000000;
         letter-spacing: 0.1em;
-        background: #111;
+        background: #fcfcfc;
         padding: 0.2em 0.5em;
         border-radius: 0.2em;
         display: inline-block;
@@ -58,8 +79,8 @@ String getHtml() {
     <h2>Time:</h2>
     <div id='duration' class='segment'>-</div>
     <form action='/reset' method='POST'><button style='font-size:1.5em;padding:0.5em 2em;margin:1em;' type='submit'>Reset</button></form>
-    <p style='color:gray;font-size:12px;'>Updates every second</p>
-    <p style='color:gray;font-size:12px;'>M5 Atom S3 Step Counter/Timer by norog242</p>
+    <p style='color:gray;font-size:12px;'>Updates every 0.5 seconds</p>
+    <p style='color:gray;font-size:12px;'>M5 Atom S3 Arrow Timer by norog242</p>
     </body></html>
   )rawliteral";
   return html;
@@ -108,9 +129,13 @@ void setup() {
     server.send(200, "text/html", getHtml());
   });
   server.on("/data", HTTP_GET, []() {
+    float currentDuration = duration;
+    if (!finished && arrows > 0) {
+      currentDuration = (millis() - startTime) / 1000.0;
+    }
     String json = "{";
     json += "\"arrows\":" + String(arrows) + ",";
-    json += "\"duration\":" + String(duration, 2);
+    json += "\"duration\":" + String(currentDuration, 2);
     json += "}";
     server.send(200, "application/json", json);
   });
@@ -123,7 +148,9 @@ void setup() {
 }
 
 void loop() {
+
   M5.update();
+  updateScreenRotation();
   server.handleClient();
 
   // Button A pressed (AtomS3 has only one button)
