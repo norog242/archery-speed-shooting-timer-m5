@@ -95,8 +95,8 @@ void updateScreenRotation() {
     else if (accX < -0.5) rotation = 3; // right
     else rotation = 0; // default
   } else {
-    if (accY > 0.5) rotation = 2; // upside down
-    else rotation = 0; // default
+    if (accY > 0.5) rotation = 0; // upside down
+    else rotation = 2; // default
   }
   if (rotation != lastRotation) {
     M5.Lcd.setRotation(rotation);
