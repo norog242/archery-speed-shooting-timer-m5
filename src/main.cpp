@@ -64,6 +64,46 @@ String getHtml() {
   return html;
 }
 
+
+void reset() {
+  arrows = 0;
+  startTime = 0;
+  duration = 0;
+  finished = false;
+  M5.Lcd.clear();
+  M5.Lcd.setCursor(0, 0);
+  M5.Lcd.clear();
+  // Show 'Arrow' in size 3
+  M5.Lcd.setTextSize(3);
+  M5.Lcd.setCursor(0, 0);
+  M5.Lcd.printf("Arrow");
+  // Show value in size 6 below
+  M5.Lcd.setTextSize(6);
+  M5.Lcd.setCursor(0, 40);
+  M5.Lcd.printf("%d", arrows);
+  M5.Lcd.setTextSize(2); // Restore default size
+  delay(500);//wait half a second to avoid false detection of the first step when resetting.
+}
+
+// Determine rotation based on accelerometer data
+void updateScreenRotation() {
+  float accX, accY, accZ;
+  M5.Imu.getAccelData(&accX, &accY, &accZ);
+  int rotation = 0;
+  if (fabs(accX) > fabs(accY)) {
+    if (accX > 0.5) rotation = 1; // left
+    else if (accX < -0.5) rotation = 3; // right
+    else rotation = 0; // default
+  } else {
+    if (accY > 0.5) rotation = 2; // upside down
+    else rotation = 0; // default
+  }
+  if (rotation != lastRotation) {
+    M5.Lcd.setRotation(rotation);
+    lastRotation = rotation;
+  }
+}
+
 void setup() {
     // Serve the font file for offline use
     server.on("/digital7.woff", HTTP_GET, []() {
@@ -165,41 +205,3 @@ void loop() {
   delay(20); // Main loop delay
 }
 
-void reset() {
-  arrows = 0;
-  startTime = 0;
-  duration = 0;
-  finished = false;
-  M5.Lcd.clear();
-  M5.Lcd.setCursor(0, 0);
-  M5.Lcd.clear();
-  // Show 'Arrow' in size 3
-  M5.Lcd.setTextSize(3);
-  M5.Lcd.setCursor(0, 0);
-  M5.Lcd.printf("Arrow");
-  // Show value in size 6 below
-  M5.Lcd.setTextSize(6);
-  M5.Lcd.setCursor(0, 40);
-  M5.Lcd.printf("%d", arrows);
-  M5.Lcd.setTextSize(2); // Restore default size
-  delay(500);//wait half a second to avoid false detection of the first step when resetting.
-}
-
-// Determine rotation based on accelerometer data
-void updateScreenRotation() {
-  float accX, accY, accZ;
-  M5.Imu.getAccelData(&accX, &accY, &accZ);
-  int rotation = 0;
-  if (fabs(accX) > fabs(accY)) {
-    if (accX > 0.5) rotation = 1; // left
-    else if (accX < -0.5) rotation = 3; // right
-    else rotation = 0; // default
-  } else {
-    if (accY > 0.5) rotation = 2; // upside down
-    else rotation = 0; // default
-  }
-  if (rotation != lastRotation) {
-    M5.Lcd.setRotation(rotation);
-    lastRotation = rotation;
-  }
-}
