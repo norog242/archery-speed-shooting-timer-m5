@@ -10,6 +10,22 @@ int arrows = 0;
 unsigned long startTime = 0;
 float duration = 0;
 bool finished = false;
+// Store last 5 durations
+#define MAX_ATTEMPTS 5
+float lastDurations[MAX_ATTEMPTS] = {0};
+int lastDurationsCount = 0;
+
+void addDuration(float d) {
+  // Shift and add new duration to the end
+  if (lastDurationsCount < MAX_ATTEMPTS) {
+    lastDurations[lastDurationsCount++] = d;
+  } else {
+    for (int i = 1; i < MAX_ATTEMPTS; ++i) {
+      lastDurations[i-1] = lastDurations[i];
+    }
+    lastDurations[MAX_ATTEMPTS-1] = d;
+  }
+}
 // Auto-rotation state
 int lastRotation = -1;
 
@@ -57,8 +73,38 @@ String getHtml() {
     <h2>Time:</h2>
     <div id='duration' class='segment'>-</div>
     <form action='/reset' method='POST'><button style='font-size:1.5em;padding:0.5em 2em;margin:1em;' type='submit'>Reset</button></form>
+    <div style='margin:1em 0;'>
+      <h4>Last 5 Attempts</h4>
+      <ul id='lastDurations'>
+        <li>-</li>
+      </ul>
+    </div>
     <p style='color:gray;font-size:12px;'>Updates every 0.5 seconds</p>
     <p style='color:gray;font-size:12px;'>M5 Atom S3 Arrow Timer by norog242</p>
+    <script>
+      function updateLastDurations(arr) {
+        const ul = document.getElementById('lastDurations');
+        ul.innerHTML = '';
+        if (!arr || arr.length === 0) {
+          ul.innerHTML = '<li>-</li>';
+          return;
+        }
+        for (let i = arr.length - 1; i >= 0; --i) {
+          const li = document.createElement('li');
+          li.textContent = arr[i].toFixed(2) + ' s';
+          ul.appendChild(li);
+        }
+      }
+      function updateData() {
+        fetch('/data').then(r => r.json()).then(d => {
+          document.getElementById('arrows').textContent = d.arrows;
+          document.getElementById('duration').textContent = d.duration.toFixed(2) + ' s';
+          updateLastDurations(d.lastDurations);
+        });
+      }
+      setInterval(updateData, 500);
+      window.onload = updateData;
+    </script>
     </body></html>
   )rawliteral";
   return html;
@@ -133,8 +179,13 @@ void setup() {
     }
     String json = "{";
     json += "\"arrows\":" + String(arrows) + ",";
-    json += "\"duration\":" + String(currentDuration, 2);
-    json += "}";
+    json += "\"duration\":" + String(currentDuration, 2) + ",";
+    json += "\"lastDurations\":[";
+    for (int i = 0; i < lastDurationsCount; ++i) {
+      json += String(lastDurations[i], 2);
+      if (i < lastDurationsCount - 1) json += ",";
+    }
+    json += "]}";
     server.send(200, "application/json", json);
   });
   server.on("/reset", HTTP_POST, []() {
@@ -170,6 +221,7 @@ void loop() {
         if (arrows == 10) {
           duration = (millis() - startTime) / 1000.0;
           finished = true;
+          addDuration(duration);
           M5.Lcd.clear();
           M5.Lcd.setTextSize(3);
           M5.Lcd.setCursor(0, 0);
