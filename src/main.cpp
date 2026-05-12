@@ -3,27 +3,33 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <webfont/digital7_woff.h>
+#include "web_server.h"
 
 
 int arrows = 0;
+int points = 0;
 unsigned long startTime = 0;
 float duration = 0;
 bool finished = false;
 // Store last 5 durations
 #define MAX_ATTEMPTS 5
 float lastDurations[MAX_ATTEMPTS] = {0};
+int lastPoints[MAX_ATTEMPTS] = {0};
 int lastDurationsCount = 0;
 
 void addDuration(float d) {
   // Shift and add new duration to the end
   if (lastDurationsCount < MAX_ATTEMPTS) {
-    lastDurations[lastDurationsCount++] = d;
+    lastDurations[lastDurationsCount] = d;
+    lastPoints[lastDurationsCount] = points;
+    lastDurationsCount++;
   } else {
     for (int i = 1; i < MAX_ATTEMPTS; ++i) {
       lastDurations[i-1] = lastDurations[i];
+      lastPoints[i-1] = lastPoints[i];
     }
     lastDurations[MAX_ATTEMPTS-1] = d;
+    lastPoints[MAX_ATTEMPTS-1] = points;
   }
 }
 // Auto-rotation state
@@ -34,81 +40,6 @@ const char* ssid = "ArrowTimerAP";
 const char* password = "12345678";
 WebServer server(80);
 
-String getHtml() {
-  String html = R"rawliteral(
-    <html><head>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Arrow Timer</title>
-    <style>
-      @font-face {
-        font-family: 'Digital7';
-        src: url('/digital7.woff') format('woff');
-        font-display: swap;
-      }
-      .segment {
-        font-family: 'Digital7', monospace;
-        font-size: 4em;
-        color: #000000;
-        letter-spacing: 0.1em;
-        background: #fcfcfc;
-        padding: 0.2em 0.5em;
-        border-radius: 0.2em;
-        display: inline-block;
-        margin: 0.2em 0;
-      }
-    </style>
-    <script>
-      function updateData() {
-        fetch('/data').then(r => r.json()).then(d => {
-          document.getElementById('arrows').textContent = d.arrows;
-          document.getElementById('duration').textContent = d.duration.toFixed(2) + ' s';
-        });
-      }
-      setInterval(updateData, 500);
-      window.onload = updateData;
-    </script>
-    </head><body style='font-family:sans-serif;text-align:center;'>
-    <h2>Arrow Count:</h2>
-    <div id='arrows' class='segment'>-</div>
-    <h2>Time:</h2>
-    <div id='duration' class='segment'>-</div>
-    <form action='/reset' method='POST'><button style='font-size:1.5em;padding:0.5em 2em;margin:1em;' type='submit'>Reset</button></form>
-    <div style='margin:1em 0;'>
-      <h4>Last 5 Attempts</h4>
-      <ul id='lastDurations'>
-        <li>-</li>
-      </ul>
-    </div>
-    <p style='color:gray;font-size:12px;'>Updates every 0.5 seconds</p>
-    <p style='color:gray;font-size:12px;'>M5 Atom S3 Arrow Timer by norog242</p>
-    <script>
-      function updateLastDurations(arr) {
-        const ul = document.getElementById('lastDurations');
-        ul.innerHTML = '';
-        if (!arr || arr.length === 0) {
-          ul.innerHTML = '<li>-</li>';
-          return;
-        }
-        for (let i = arr.length - 1; i >= 0; --i) {
-          const li = document.createElement('li');
-          li.textContent = arr[i].toFixed(2) + ' s';
-          ul.appendChild(li);
-        }
-      }
-      function updateData() {
-        fetch('/data').then(r => r.json()).then(d => {
-          document.getElementById('arrows').textContent = d.arrows;
-          document.getElementById('duration').textContent = d.duration.toFixed(2) + ' s';
-          updateLastDurations(d.lastDurations);
-        });
-      }
-      setInterval(updateData, 500);
-      window.onload = updateData;
-    </script>
-    </body></html>
-  )rawliteral";
-  return html;
-}
 
 
 void reset() {
@@ -151,12 +82,10 @@ void updateScreenRotation() {
 }
 
 void setup() {
-    // Serve the font file for offline use
-    server.on("/digital7.woff", HTTP_GET, []() {
-      server.sendHeader("Content-Type", "font/woff");
-      server.send_P(200, "font/woff", (const char*)digital7_woff, digital7_woff_len);
-    });
+    // Setup static web server routes
+    setupWebServer(server);
   M5.begin();
+  M5.Lcd.setBrightness(179); // 70% brightness
   M5.Lcd.setTextSize(2);
   reset();
 
@@ -168,27 +97,33 @@ void setup() {
   M5.Lcd.printf("AP: %s\nIP: %s", ssid, IP.toString().c_str());
   M5.Lcd.setTextSize(2);
 
-  // Web server route
-  server.on("/", []() {
-    server.send(200, "text/html", getHtml());
-  });
+  // ...static routes handled in web_server.cpp...
   server.on("/data", HTTP_GET, []() {
     float currentDuration = duration;
     if (!finished && arrows > 0) {
       currentDuration = (millis() - startTime) / 1000.0;
     }
+    float score = (currentDuration > 0) ? ((float)points / currentDuration) : 0.0;
     String json = "{";
     json += "\"arrows\":" + String(arrows) + ",";
     json += "\"duration\":" + String(currentDuration, 2) + ",";
+    json += "\"points\":" + String(points) + ",";
+    json += "\"score\":" + String(score, 2) + ",";
     json += "\"lastDurations\":[";
     for (int i = 0; i < lastDurationsCount; ++i) {
-      json += String(lastDurations[i], 2);
+      float d = lastDurations[i];
+      int p = lastPoints[i];
+      float s = (d > 0) ? ((float)p / d) : 0.0;
+      json += "{\"duration\":" + String(d, 2) + ",\"points\":" + String(p) + ",\"score\":" + String(s, 2) + "}";
       if (i < lastDurationsCount - 1) json += ",";
     }
     json += "]}";
     server.send(200, "application/json", json);
   });
   server.on("/reset", HTTP_POST, []() {
+    if (server.hasArg("points")) {
+      points = server.arg("points").toInt();
+    }
     reset();
     server.sendHeader("Location", "/");
     server.send(303);
@@ -199,7 +134,9 @@ void setup() {
 void loop() {
 
   M5.update();
-  updateScreenRotation();
+  if (arrows < 10) {
+    updateScreenRotation();
+  }
   server.handleClient();
 
   // Button A pressed (AtomS3 has only one button)
