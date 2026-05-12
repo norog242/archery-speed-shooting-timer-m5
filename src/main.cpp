@@ -85,7 +85,7 @@ void setup() {
     // Setup static web server routes
     setupWebServer(server);
   M5.begin();
-  M5.Lcd.setBrightness(179); // 70% brightness
+  M5.Lcd.setBrightness(100); 
   M5.Lcd.setTextSize(2);
   reset();
 
