@@ -1,5 +1,3 @@
-// HTML implementation
-#include "web_server_html.cpp"
 #include "web_server.h"
 #include <Arduino.h>
 #include <WebServer.h>
@@ -26,11 +24,11 @@ void updateWebData(int arrows, float duration, int points, float score, float* l
 }
 
 void setupWebServer(WebServer& server) {
-    server.on("/digital7.woff", HTTP_GET, []() {
+    server.on("/digital7.woff", HTTP_GET, [&]() {
         server.sendHeader("Content-Type", "font/woff");
         server.send_P(200, "font/woff", (const char*)digital7_woff, digital7_woff_len);
     });
-    server.on("/", []() {
+    server.on("/", [&]() {
         server.send(200, "text/html", getHtml());
     });
 }
