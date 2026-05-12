@@ -29,9 +29,12 @@ String getHtml() {
         fetch('/data').then(r => r.json()).then(d => {
           document.getElementById('arrows').textContent = d.arrows;
           document.getElementById('duration').textContent = d.duration.toFixed(2) + ' s';
-          document.getElementById('score').textContent = d.score.toFixed(2) + ' pts/s';
-          document.getElementById('points').value = d.points;
-            updateResetBtnLabel(d.arrows);
+          updateResetBtnLabel(d.arrows);
+          // Reset points and score for new attempt
+          if (d.arrows === 0) {
+            document.getElementById('points').value = 0;
+            document.getElementById('score').textContent = '0.00 pts/s';
+          }
         });
       }
       setInterval(updateData, 500);
@@ -44,7 +47,27 @@ String getHtml() {
     <div id='duration' class='segment'>-</div>
     <h2>Score:</h2>
     <div id='score' class='segment'>-</div>
-    <form id='pointsForm' action='/reset' method='POST' style='margin-bottom:1em;display:flex;align-items:center;justify-content:center;gap:8px;'>
+    <form id='pointsForm' action='/reset' method='POST' style='margin-bottom:1em;display:flex;align-items:center;justify-content:center;gap:8px;' onsubmit='return submitWithScore(event)'>
+          <script>
+            function submitWithScore(e) {
+              // Add score as hidden input before submitting
+              const form = document.getElementById('pointsForm');
+              let scoreInput = document.getElementById('scoreInput');
+              if (!scoreInput) {
+                scoreInput = document.createElement('input');
+                scoreInput.type = 'hidden';
+                scoreInput.name = 'score';
+                scoreInput.id = 'scoreInput';
+                form.appendChild(scoreInput);
+              }
+              const points = parseInt(document.getElementById('points').value) || 0;
+              const durationText = document.getElementById('duration').textContent;
+              const duration = parseFloat(durationText) || 0;
+              const score = (duration > 0) ? (points / duration) : 0;
+              scoreInput.value = score;
+              return true;
+            }
+          </script>
       <label for='points' style='font-size:1.2em;'>Points:</label>
       <button type='button' class='points-btn' onclick='changePoints(-10)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>-10</button>
       <button type='button' class='points-btn' onclick='changePoints(-1)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>-1</button>
@@ -54,13 +77,24 @@ String getHtml() {
       <button id='resetBtn' style='font-size:1.5em;padding:0.5em 2em;margin-left:16px;' type='submit'>Reset</button>
     </form>
     <script>
+      function updateScoreField() {
+        const points = parseInt(document.getElementById('points').value) || 0;
+        const durationText = document.getElementById('duration').textContent;
+        const duration = parseFloat(durationText) || 0;
+        const score = (duration > 0) ? (points / duration) : 0;
+        document.getElementById('score').textContent = score.toFixed(2) + ' pts/s';
+      }
       function changePoints(delta) {
         const input = document.getElementById('points');
         let val = parseInt(input.value) || 0;
         val += delta;
         if (val < 0) val = 0;
         input.value = val;
+        updateScoreField();
       }
+      document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('points').addEventListener('input', updateScoreField);
+      });
       function updateResetBtnLabel(arrows) {
         const btn = document.getElementById('resetBtn');
         if (btn) btn.textContent = (arrows === 10) ? 'Start' : 'Reset';

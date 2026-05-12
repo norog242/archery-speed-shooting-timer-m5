@@ -18,10 +18,9 @@ int lastPoints[MAX_ATTEMPTS] = {0};
 int lastDurationsCount = 0;
 
 void addDuration(float d) {
-  // Shift and add new duration to the end
+  // Shift and add new duration and points to the end
   if (lastDurationsCount < MAX_ATTEMPTS) {
     lastDurations[lastDurationsCount] = d;
-    lastPoints[lastDurationsCount] = points;
     lastDurationsCount++;
   } else {
     for (int i = 1; i < MAX_ATTEMPTS; ++i) {
@@ -29,8 +28,8 @@ void addDuration(float d) {
       lastPoints[i-1] = lastPoints[i];
     }
     lastDurations[MAX_ATTEMPTS-1] = d;
-    lastPoints[MAX_ATTEMPTS-1] = points;
   }
+  // points and score will be set in reset handler
 }
 // Auto-rotation state
 int lastRotation = -1;
@@ -121,9 +120,39 @@ void setup() {
     server.send(200, "application/json", json);
   });
   server.on("/reset", HTTP_POST, []() {
-    if (server.hasArg("points")) {
-      points = server.arg("points").toInt();
+    static unsigned long lastResetTime = 0;
+    unsigned long now = millis();
+    if (now - lastResetTime < 500) {
+      server.send(429, "text/plain", "Debounced");
+      return;
     }
+    lastResetTime = now;
+    int inputPoints = points;
+    float inputScore = 0.0;
+    if (server.hasArg("points")) {
+      inputPoints = server.arg("points").toInt();
+    }
+    if (server.hasArg("score")) {
+      inputScore = server.arg("score").toFloat();
+    } else if (duration > 0) {
+      inputScore = ((float)inputPoints / duration);
+    }
+    // Only store if finished (after 10 arrows)
+    if (finished && duration > 0) {
+      if (lastDurationsCount < MAX_ATTEMPTS) {
+        lastDurations[lastDurationsCount] = duration;
+        lastPoints[lastDurationsCount] = inputPoints;
+        lastDurationsCount++;
+      } else {
+        for (int i = 1; i < MAX_ATTEMPTS; ++i) {
+          lastDurations[i-1] = lastDurations[i];
+          lastPoints[i-1] = lastPoints[i];
+        }
+        lastDurations[MAX_ATTEMPTS-1] = duration;
+        lastPoints[MAX_ATTEMPTS-1] = inputPoints;
+      }
+    }
+    points = inputPoints;
     reset();
     server.sendHeader("Location", "/");
     server.send(303);
@@ -158,7 +187,7 @@ void loop() {
         if (arrows == 10) {
           duration = (millis() - startTime) / 1000.0;
           finished = true;
-          addDuration(duration);
+          // Do not store attempt yet, wait for points input and reset
           M5.Lcd.clear();
           M5.Lcd.setTextSize(3);
           M5.Lcd.setCursor(0, 0);
@@ -181,14 +210,7 @@ void loop() {
       }
     }
   } else {
-    // After 10 arrows, just show the result, keep server responsive
-    M5.Lcd.setTextSize(3);
-    M5.Lcd.setCursor(0, 0);
-    M5.Lcd.printf("Time");
-    M5.Lcd.setTextSize(6);
-    M5.Lcd.setCursor(0, 40);
-    M5.Lcd.printf("%.2f", duration);
-    M5.Lcd.setTextSize(2);
+    // After 10 arrows, do nothing until reset (no repeated LCD updates)
     // Wait for reset, but do not block
   }
   delay(20); // Main loop delay
