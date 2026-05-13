@@ -47,7 +47,7 @@ String getHtml() {
     <div id='duration' class='segment'>-</div>
     <h2>Score:</h2>
     <div id='score' class='segment'>-</div>
-    <form id='pointsForm' action='/reset' method='POST' style='margin-bottom:1em;display:flex;align-items:center;justify-content:center;gap:8px;' onsubmit='return submitWithScore(event)'>
+    <form id='pointsForm' action='/reset' method='POST' style='margin-bottom:1em;display:flex;align-items:center;justify-content:center;gap:8px; flex-wrap:wrap;' onsubmit='return submitWithScore(event)'>
           <script>
             function submitWithScore(e) {
               // Add score as hidden input before submitting
@@ -68,14 +68,15 @@ String getHtml() {
               return true;
             }
           </script>
-      <label for='points' style='font-size:1.2em;'>Points:</label>
+      <label for='points' style='font-size:1.5em;'>Points: </label>
       <button type='button' class='points-btn' onclick='changePoints(-10)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>-10</button>
       <button type='button' class='points-btn' onclick='changePoints(-1)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>-1</button>
       <input type='number' id='points' name='points' min='0' value='0' style='font-size:1.2em;width:5em;margin:0 8px;'>
       <button type='button' class='points-btn' onclick='changePoints(1)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>+1</button>
       <button type='button' class='points-btn' onclick='changePoints(10)' style='font-size:1.5em;padding:0.5em 1em;'>+10</button>
-      <button id='resetBtn' style='font-size:1.5em;padding:0.5em 2em;margin-left:16px;' type='submit'>Reset</button>
-    </form>
+      
+      <button id='resetBtn' style='font-size:1.5em;padding:0.5em 2em;margin-left:16px; margin-top:16px; border:none; border-radius:0.2em; width:50%' type='submit'>Reset</button>
+      </form>
     <script>
       function updateScoreField() {
         const points = parseInt(document.getElementById('points').value) || 0;
