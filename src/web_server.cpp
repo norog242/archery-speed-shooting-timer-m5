@@ -31,6 +31,9 @@ void setupWebServer(WebServer& server) {
     server.on("/", [&]() {
         server.send(200, "text/html", getHtml());
     });
+    server.on("/config", [&]() {
+        server.send(200, "text/html", getConfigHtml());
+    });
 }
 
 // The getHtml() function will be moved here from main.cpp

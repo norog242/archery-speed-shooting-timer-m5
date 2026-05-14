@@ -3,6 +3,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <Preferences.h>
+#include <ESPmDNS.h>
 #include "web_server.h"
 
 
@@ -35,9 +37,21 @@ void addDuration(float d) {
 int lastRotation = -1;
 
 // WiFi and Web server setup
-const char* ssid = "ArrowTimerAP";
-const char* password = "12345678";
+const char* ap_ssid = "ArrowTimerAP";
+const char* ap_password = "12345678";
+const char* mdns_hostname = "arrowtimer";
 WebServer server(80);
+Preferences preferences;
+
+// WiFi mode tracking
+bool isStationMode = false;
+String currentSSID = "";
+
+// Button long press for WiFi reset
+unsigned long buttonPressStartTime = 0;
+bool buttonPressed = false;
+bool wifiResetInProgress = false;
+const unsigned long WIFI_RESET_DURATION = 10000; // 10 seconds
 
 
 
@@ -80,6 +94,56 @@ void updateScreenRotation() {
   }
 }
 
+bool connectToWiFi(const String& ssid, const String& password) {
+  if (ssid.length() == 0) return false;
+  
+  M5.Lcd.setCursor(0, 100);
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.printf("Connecting to:\n%s", ssid.c_str());
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid.c_str(), password.c_str());
+  
+  int attempts = 0;
+  while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    delay(500);
+    M5.Lcd.printf(".");
+    attempts++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    isStationMode = true;
+    currentSSID = ssid;
+    IPAddress IP = WiFi.localIP();
+    
+    // Start mDNS
+    if (MDNS.begin(mdns_hostname)) {
+      MDNS.addService("http", "tcp", 80);
+    }
+    
+    M5.Lcd.clear();
+    M5.Lcd.setCursor(0, 100);
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.printf("WiFi: %s\nIP: %s\n%s.local", ssid.c_str(), IP.toString().c_str(), mdns_hostname);
+    M5.Lcd.setTextSize(2);
+    return true;
+  }
+  return false;
+}
+
+void startAPMode() {
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(ap_ssid, ap_password);
+  IPAddress IP = WiFi.softAPIP();
+  M5.Lcd.clear();
+  M5.Lcd.setCursor(0, 100);
+  M5.Lcd.setTextSize(1);
+  M5.Lcd.printf("AP: %s\nIP: %s", ap_ssid, IP.toString().c_str());
+  M5.Lcd.setTextSize(2);
+  isStationMode = false;
+  currentSSID = ap_ssid;
+}
+
 void setup() {
     // Setup static web server routes
     setupWebServer(server);
@@ -88,13 +152,22 @@ void setup() {
   M5.Lcd.setTextSize(2);
   reset();
 
-  // WiFi Access Point setup
-  WiFi.softAP(ssid, password);
-  IPAddress IP = WiFi.softAPIP();
-  M5.Lcd.setCursor(0, 100);
-  M5.Lcd.setTextSize(1);
-  M5.Lcd.printf("AP: %s\nIP: %s", ssid, IP.toString().c_str());
-  M5.Lcd.setTextSize(2);
+  // Initialize preferences
+  preferences.begin("wifi-config", false);
+  
+  // Try to load and connect to saved WiFi
+  String savedSSID = preferences.getString("ssid", "");
+  String savedPassword = preferences.getString("password", "");
+  
+  bool connected = false;
+  if (savedSSID.length() > 0) {
+    connected = connectToWiFi(savedSSID, savedPassword);
+  }
+  
+  // Fall back to AP mode if connection failed
+  if (!connected) {
+    startAPMode();
+  }
 
   // ...static routes handled in web_server.cpp...
   server.on("/data", HTTP_GET, []() {
@@ -119,6 +192,41 @@ void setup() {
     json += "]}";
     server.send(200, "application/json", json);
   });
+  server.on("/wifi-config", HTTP_POST, []() {
+    if (server.hasArg("ssid")) {
+      String newSSID = server.arg("ssid");
+      String newPassword = server.arg("password");
+      
+      // Save to preferences
+      preferences.putString("ssid", newSSID);
+      preferences.putString("password", newPassword);
+      
+      server.send(200, "text/plain", "WiFi configuration saved. Device will restart...");
+      delay(1000);
+      ESP.restart();
+    } else {
+      server.send(400, "text/plain", "Missing SSID");
+    }
+  });
+  
+  server.on("/wifi-status", HTTP_GET, []() {
+    String json = "{";
+    json += "\"mode\":\"" + String(isStationMode ? "station" : "ap") + "\",";
+    json += "\"ssid\":\"" + currentSSID + "\",";
+    json += "\"ip\":\"" + (isStationMode ? WiFi.localIP().toString() : WiFi.softAPIP().toString()) + "\",";
+    json += "\"hostname\":\"" + String(mdns_hostname) + ".local\"";
+    json += "}";
+    server.send(200, "application/json", json);
+  });
+  
+  server.on("/wifi-clear", HTTP_POST, []() {
+    preferences.remove("ssid");
+    preferences.remove("password");
+    server.send(200, "text/plain", "WiFi configuration cleared. Device will restart in AP mode...");
+    delay(1000);
+    ESP.restart();
+  });
+  
   server.on("/reset", HTTP_POST, []() {
     static unsigned long lastResetTime = 0;
     unsigned long now = millis();
@@ -168,10 +276,92 @@ void loop() {
   }
   server.handleClient();
 
-  // Button A pressed (AtomS3 has only one button)
-  if (M5.BtnA.wasPressed()) {
-    reset();
+  // Check for button long press to reset WiFi credentials
+  if (M5.BtnA.isPressed()) {
+    if (!buttonPressed) {
+      // Button just pressed
+      buttonPressed = true;
+      buttonPressStartTime = millis();
+      wifiResetInProgress = false;
+    } else {
+      // Button is being held
+      unsigned long pressDuration = millis() - buttonPressStartTime;
+      
+      if (pressDuration >= WIFI_RESET_DURATION && !wifiResetInProgress) {
+        // 10 seconds reached - reset WiFi
+        wifiResetInProgress = true;
+        M5.Lcd.clear();
+        M5.Lcd.setTextSize(2);
+        M5.Lcd.setCursor(0, 20);
+        M5.Lcd.printf("WiFi Reset!\n\nClearing\nconfig...");
+        
+        // Clear WiFi credentials
+        preferences.remove("ssid");
+        preferences.remove("password");
+        
+        delay(1000);
+        M5.Lcd.clear();
+        M5.Lcd.setCursor(0, 20);
+        M5.Lcd.printf("Restarting\nin AP mode...");
+        delay(1000);
+        ESP.restart();
+      } else if (pressDuration >= 3000 && pressDuration < WIFI_RESET_DURATION) {
+        // Show progress indicator after 3 seconds
+        if (!wifiResetInProgress && (pressDuration / 500) % 2 == 0) {
+          M5.Lcd.clear();
+          M5.Lcd.setTextSize(2);
+          M5.Lcd.setCursor(0, 20);
+          M5.Lcd.printf("Hold for\nWiFi reset\n\n%d sec", (WIFI_RESET_DURATION - pressDuration) / 1000);
+        }
+      }
+    }
+  } else {
+    if (buttonPressed) {
+      // Button released
+      unsigned long pressDuration = millis() - buttonPressStartTime;
+      buttonPressed = false;
+      
+      // Only trigger normal reset if press was short (< 3 seconds) and not during a run
+      if (pressDuration < 3000 && !wifiResetInProgress) {
+        reset();
+      } else if (pressDuration >= 3000 && !wifiResetInProgress) {
+        // Long press released before 10 seconds - restore display
+        M5.Lcd.clear();
+        if (finished) {
+          M5.Lcd.setTextSize(3);
+          M5.Lcd.setCursor(0, 0);
+          M5.Lcd.printf("Time");
+          M5.Lcd.setTextSize(6);
+          M5.Lcd.setCursor(0, 40);
+          M5.Lcd.printf("%.2f", duration);
+          M5.Lcd.setTextSize(2);
+        } else {
+          M5.Lcd.setTextSize(3);
+          M5.Lcd.setCursor(0, 0);
+          M5.Lcd.printf("Arrow");
+          M5.Lcd.setTextSize(6);
+          M5.Lcd.setCursor(0, 40);
+          M5.Lcd.printf("%d", arrows);
+          M5.Lcd.setTextSize(2);
+        }
+        // Restore WiFi info at bottom
+        M5.Lcd.setCursor(0, 100);
+        M5.Lcd.setTextSize(1);
+        if (isStationMode) {
+          M5.Lcd.printf("WiFi: %s\nIP: %s\n%s.local", currentSSID.c_str(), WiFi.localIP().toString().c_str(), mdns_hostname);
+        } else {
+          M5.Lcd.printf("AP: %s\nIP: %s", ap_ssid, WiFi.softAPIP().toString().c_str());
+        }
+        M5.Lcd.setTextSize(2);
+      }
+    }
   }
+
+  // Button A pressed (AtomS3 has only one button) - now handled above
+  // Commenting out old button handling
+  // if (M5.BtnA.wasPressed()) {
+  //   reset();
+  // }
 
   if (!finished) {
     float accX, accY, accZ;
