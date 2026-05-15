@@ -5,6 +5,7 @@
 #include <WebServer.h>
 #include <Preferences.h>
 #include <ESPmDNS.h>
+#include <HTTPClient.h>
 #include "web_server.h"
 
 
@@ -47,8 +48,9 @@ Preferences preferences;
 bool isStationMode = false;
 String currentSSID = "";
 
-// Tournament ID
+// Tournament ID and API domain
 int tournamentId = -1;  // -1 means not set
+String apiDomain = "archers.himmelix.ch";  // Default API domain
 
 // Button long press for WiFi reset
 unsigned long buttonPressStartTime = 0;
@@ -162,8 +164,9 @@ void setup() {
   String savedSSID = preferences.getString("ssid", "");
   String savedPassword = preferences.getString("password", "");
   
-  // Load tournament ID
+  // Load tournament ID and API domain
   tournamentId = preferences.getInt("tournamentId", -1);
+  apiDomain = preferences.getString("apiDomain", "archers.himmelix.ch");
   
   bool connected = false;
   if (savedSSID.length() > 0) {
@@ -241,6 +244,7 @@ void setup() {
     } else {
       json += "\"tournamentId\":null";
     }
+    json += ",\"apiDomain\":\"" + apiDomain + "\"";
     json += "}";
     server.send(200, "application/json", json);
   });
@@ -249,10 +253,19 @@ void setup() {
     if (server.hasArg("tournamentId")) {
       tournamentId = server.arg("tournamentId").toInt();
       
-      // Save to preferences
+      // Save API domain if provided
+      if (server.hasArg("apiDomain")) {
+        apiDomain = server.arg("apiDomain");
+        if (apiDomain.length() == 0) {
+          apiDomain = "archers.himmelix.ch";  // Default if empty
+        }
+        preferences.putString("apiDomain", apiDomain);
+      }
+      
+      // Save tournament ID to preferences
       preferences.putInt("tournamentId", tournamentId);
       
-      server.send(200, "text/plain", "Tournament ID saved successfully");
+      server.send(200, "text/plain", "Tournament configuration saved successfully");
     } else {
       server.send(400, "text/plain", "Missing tournament ID");
     }
@@ -260,8 +273,102 @@ void setup() {
   
   server.on("/tournament-clear", HTTP_POST, []() {
     tournamentId = -1;
+    apiDomain = "archers.himmelix.ch";
     preferences.remove("tournamentId");
-    server.send(200, "text/plain", "Tournament ID cleared successfully");
+    preferences.remove("apiDomain");
+    server.send(200, "text/plain", "Tournament configuration cleared successfully");
+  });
+  
+  server.on("/tournament-participants", HTTP_GET, []() {
+    // Check if tournament ID is configured
+    if (tournamentId < 0) {
+      server.send(400, "application/json", "{\"error\":\"Tournament ID not configured\"}");
+      return;
+    }
+    
+    // Check if WiFi is connected
+    if (WiFi.status() != WL_CONNECTED) {
+      server.send(503, "application/json", "{\"error\":\"WiFi not connected\"}");
+      return;
+    }
+    
+    HTTPClient http;
+    String url = "https://" + apiDomain + "/api/v1/tournaments/" + String(tournamentId) + "/participants";
+    
+    http.begin(url);
+    http.addHeader("Authorization", "Bearer paBQQVhY4soHrzBkJRwD6tBpMvTgGtYhSWT1keV82EC89vbXwWwVq7Vh11SWDDSb");
+    
+    int httpCode = http.GET();
+    
+    if (httpCode > 0) {
+      if (httpCode == HTTP_CODE_OK) {
+        String payload = http.getString();
+        server.send(200, "application/json", payload);
+      } else {
+        String error = "{\"error\":\"API returned status code " + String(httpCode) + "\"}";
+        server.send(httpCode, "application/json", error);
+      }
+    } else {
+      String error = "{\"error\":\"Failed to connect to API: " + http.errorToString(httpCode) + "\"}";
+      server.send(500, "application/json", error);
+    }
+    
+    http.end();
+  });
+  
+  server.on("/tournament-save-result", HTTP_POST, []() {
+    // Check if tournament ID is configured
+    if (tournamentId < 0) {
+      server.send(400, "application/json", "{\"error\":\"Tournament ID not configured\"}");
+      return;
+    }
+    
+    // Check if WiFi is connected
+    if (WiFi.status() != WL_CONNECTED) {
+      server.send(503, "application/json", "{\"error\":\"WiFi not connected\"}");
+      return;
+    }
+    
+    // Parse request parameters
+    if (!server.hasArg("participantId") || !server.hasArg("points") || !server.hasArg("duration")) {
+      server.send(400, "application/json", "{\"error\":\"Missing required parameters\"}");
+      return;
+    }
+    
+    int participantId = server.arg("participantId").toInt();
+    int rawScore = server.arg("points").toInt();
+    float timeInSeconds = server.arg("duration").toFloat();
+    
+    // Build JSON payload
+    String jsonPayload = "{";
+    jsonPayload += "\"tournament_participant_id\":" + String(participantId) + ",";
+    jsonPayload += "\"raw_score\":" + String(rawScore) + ",";
+    jsonPayload += "\"time_in_seconds\":" + String(timeInSeconds, 2);
+    jsonPayload += "}";
+    
+    HTTPClient http;
+    String url = "https://" + apiDomain + "/api/v1/tournaments/" + String(tournamentId) + "/speed-attempts";
+    
+    http.begin(url);
+    http.addHeader("Authorization", "Bearer paBQQVhY4soHrzBkJRwD6tBpMvTgGtYhSWT1keV82EC89vbXwWwVq7Vh11SWDDSb");
+    http.addHeader("Content-Type", "application/json");
+    
+    int httpCode = http.POST(jsonPayload);
+    
+    if (httpCode > 0) {
+      if (httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_CREATED) {
+        String payload = http.getString();
+        server.send(200, "application/json", payload);
+      } else {
+        String error = "{\"error\":\"API returned status code " + String(httpCode) + "\"}";
+        server.send(httpCode, "application/json", error);
+      }
+    } else {
+      String error = "{\"error\":\"Failed to connect to API: " + http.errorToString(httpCode) + "\"}";
+      server.send(500, "application/json", error);
+    }
+    
+    http.end();
   });
   
   server.on("/reset", HTTP_POST, []() {

@@ -251,34 +251,48 @@ String getHtml() {
       }
       
       function loadTournamentUsers() {
-        // Placeholder: This will be replaced with actual API call to tournament system
-        // For now, add some dummy users for testing
         const select = document.getElementById('username-select');
-        select.innerHTML = '<option value="">-- Select Archer --</option>';
+        select.innerHTML = '<option value="">-- Loading... --</option>';
+        select.disabled = true;
         
-        // TODO: Replace with actual API call
-        // fetch('/api/tournament/users').then(r => r.json()).then(users => {
-        //   users.forEach(user => {
-        //     const option = document.createElement('option');
-        //     option.value = user.id;
-        //     option.textContent = user.name;
-        //     select.appendChild(option);
-        //   });
-        // });
-        
-        // Temporary placeholder users
-        const dummyUsers = ['Archer 1', 'Archer 2', 'Archer 3'];
-        dummyUsers.forEach(name => {
-          const option = document.createElement('option');
-          option.value = name;
-          option.textContent = name;
-          select.appendChild(option);
+        fetch('/tournament-participants')
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => {
+              throw new Error(err.error || 'Failed to load participants');
+            });
+          }
+          return response.json();
+        })
+        .then(result => {
+          select.innerHTML = '<option value="">-- Select Archer --</option>';
+          
+          if (result.data && result.data.length > 0) {
+            result.data.forEach(participant => {
+              const option = document.createElement('option');
+              option.value = participant.tournament_participant_id;
+              option.textContent = participant.name;
+              select.appendChild(option);
+            });
+            select.disabled = false;
+          } else {
+            select.innerHTML = '<option value="">-- No participants found --</option>';
+            select.disabled = true;
+          }
+        })
+        .catch(error => {
+          console.error('Error loading participants:', error);
+          select.innerHTML = '<option value="">-- Error loading participants --</option>';
+          select.disabled = true;
+          showTournamentMessage('Failed to load participants: ' + error.message, 'error');
         });
       }
       
       function saveToTournament() {
-        const username = document.getElementById('username-select').value;
-        if (!username) {
+        const participantId = document.getElementById('username-select').value;
+        const participantName = document.getElementById('username-select').options[document.getElementById('username-select').selectedIndex].text;
+        
+        if (!participantId) {
           showTournamentMessage('Please select an archer', 'error');
           return;
         }
@@ -286,7 +300,6 @@ String getHtml() {
         const points = parseInt(document.getElementById('points').value) || 0;
         const durationText = document.getElementById('duration').textContent;
         const duration = parseFloat(durationText) || 0;
-        const score = (duration > 0) ? (points / duration) : 0;
         const arrows = parseInt(document.getElementById('arrows').textContent) || 0;
         
         if (arrows !== 10) {
@@ -294,46 +307,43 @@ String getHtml() {
           return;
         }
         
+        if (duration <= 0) {
+          showTournamentMessage('Invalid duration', 'error');
+          return;
+        }
+        
         const btn = document.getElementById('save-tournament-btn');
         btn.disabled = true;
         btn.textContent = 'Saving...';
         
-        // Placeholder: This will be replaced with actual API call to tournament system
-        // TODO: Replace with actual API endpoint
-        /*
-        const data = {
-          username: username,
-          tournamentId: document.getElementById('tournament-id-display').textContent,
-          arrows: arrows,
-          duration: duration,
-          points: points,
-          score: score
-        };
+        const formData = new URLSearchParams();
+        formData.append('participantId', participantId);
+        formData.append('points', points);
+        formData.append('duration', duration);
         
-        fetch('/api/tournament/save-result', {
+        fetch('/tournament-save-result', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        }).then(r => r.json()).then(result => {
-          if (result.success) {
-            showTournamentMessage('Result saved to tournament successfully!', 'success');
-          } else {
-            showTournamentMessage('Error saving to tournament: ' + result.message, 'error');
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => {
+              throw new Error(err.error || 'Failed to save result');
+            });
           }
-        }).catch(error => {
-          showTournamentMessage('Error saving to tournament: ' + error, 'error');
-        }).finally(() => {
+          return response.json();
+        })
+        .then(result => {
+          showTournamentMessage('Result saved successfully for ' + participantName + '!', 'success');
           btn.disabled = false;
-          btn.textContent = 'Save to Tournament';
+          btn.textContent = 'Save';
+        })
+        .catch(error => {
+          showTournamentMessage('Error: ' + error.message, 'error');
+          btn.disabled = false;
+          btn.textContent = 'Save';
         });
-        */
-        
-        // Temporary simulation
-        setTimeout(() => {
-          showTournamentMessage('Tournament API not yet connected. Result would be saved for ' + username, 'success');
-          btn.disabled = false;
-          btn.textContent = 'Save to Tournament';
-        }, 1000);
       }
       
       function showTournamentMessage(text, type) {
@@ -567,15 +577,31 @@ String getTournamentConfigHtml() {
       .message.success { background: #d4edda; color: #155724; }
       .message.error { background: #f8d7da; color: #721c24; }
       .info { color: #666; font-size: 0.9em; margin-top: 0.5em; }
+      .participants-box { background: #f9f9f9; padding: 1em; border-radius: 0.5em; margin: 1.5em 0; }
+      .participant-item { padding: 0.5em; border-bottom: 1px solid #ddd; }
+      .participant-item:last-child { border-bottom: none; }
+      .participant-name { font-weight: bold; }
+      .participant-id { color: #666; font-size: 0.9em; margin-left: 0.5em; }
+      #participants-list { display: none; }
     </style>
     <script>
       function loadStatus() {
         fetch('/tournament-status').then(r => r.json()).then(d => {
-          const statusText = d.tournamentId ? 'Tournament ID: ' + d.tournamentId : 'Not configured';
+          let statusText = d.tournamentId ? 'Tournament ID: ' + d.tournamentId : 'Not configured';
+          if (d.apiDomain) {
+            statusText += ' | Domain: ' + d.apiDomain;
+          }
           document.getElementById('current-tournament').textContent = statusText;
           
           if (d.tournamentId) {
             document.getElementById('tournamentId').value = d.tournamentId;
+            loadParticipants();
+          } else {
+            document.getElementById('participants-list').style.display = 'none';
+          }
+          
+          if (d.apiDomain) {
+            document.getElementById('apiDomain').value = d.apiDomain;
           }
         }).catch(e => {
           console.error('Error loading status:', e);
@@ -583,17 +609,60 @@ String getTournamentConfigHtml() {
         });
       }
       
+      function loadParticipants() {
+        document.getElementById('participants-status').textContent = 'Loading participants...';
+        document.getElementById('participants-list').style.display = 'block';
+        document.getElementById('participants-container').innerHTML = '';
+        
+        fetch('/tournament-participants')
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => {
+              throw new Error(err.error || 'Failed to load participants');
+            });
+          }
+          return response.json();
+        })
+        .then(result => {
+          if (result.data && result.data.length > 0) {
+            document.getElementById('participants-status').textContent = 'Participants (' + result.data.length + '):';
+            const container = document.getElementById('participants-container');
+            result.data.forEach(participant => {
+              const div = document.createElement('div');
+              div.className = 'participant-item';
+              div.innerHTML = '<span class="participant-name">' + participant.name + 
+                             '</span><span class="participant-id">(ID: ' + 
+                             participant.tournament_participant_id + ')</span>';
+              container.appendChild(div);
+            });
+          } else {
+            document.getElementById('participants-status').textContent = 'No participants found';
+          }
+        })
+        .catch(error => {
+          document.getElementById('participants-status').textContent = 'Error: ' + error.message;
+          document.getElementById('participants-container').innerHTML = '';
+        });
+      }
+      
       function saveConfig(event) {
         event.preventDefault();
         const tournamentId = document.getElementById('tournamentId').value;
+        const apiDomain = document.getElementById('apiDomain').value;
         
         if (!tournamentId) {
           showMessage('Please enter a tournament ID', 'error');
           return;
         }
         
+        if (!apiDomain) {
+          showMessage('Please enter an API domain', 'error');
+          return;
+        }
+        
         const formData = new URLSearchParams();
         formData.append('tournamentId', tournamentId);
+        formData.append('apiDomain', apiDomain);
         
         document.getElementById('save-btn').disabled = true;
         document.getElementById('save-btn').textContent = 'Saving...';
@@ -605,32 +674,34 @@ String getTournamentConfigHtml() {
         })
         .then(response => response.text())
         .then(data => {
-          showMessage('Tournament ID saved successfully!', 'success');
+          showMessage('Tournament configuration saved successfully!', 'success');
           document.getElementById('save-btn').disabled = false;
           document.getElementById('save-btn').textContent = 'Save';
           loadStatus();
+          loadParticipants();
         })
         .catch(error => {
-          showMessage('Error saving tournament ID: ' + error, 'error');
+          showMessage('Error saving tournament configuration: ' + error, 'error');
           document.getElementById('save-btn').disabled = false;
           document.getElementById('save-btn').textContent = 'Save';
         });
       }
       
       function clearConfig() {
-        if (!confirm('Are you sure you want to clear the tournament ID?')) {
+        if (!confirm('Are you sure you want to clear the tournament configuration?')) {
           return;
         }
         
         fetch('/tournament-clear', { method: 'POST' })
         .then(response => response.text())
         .then(data => {
-          showMessage('Tournament ID cleared successfully!', 'success');
+          showMessage('Tournament configuration cleared successfully!', 'success');
           document.getElementById('tournamentId').value = '';
+          document.getElementById('apiDomain').value = 'archers.himmelix.ch';
           loadStatus();
         })
         .catch(error => {
-          showMessage('Error clearing tournament ID: ' + error, 'error');
+          showMessage('Error clearing tournament configuration: ' + error, 'error');
         });
       }
       
@@ -656,22 +727,35 @@ String getTournamentConfigHtml() {
     <h2>Tournament Integration</h2>
     <form onsubmit='saveConfig(event)'>
       <div class='form-group'>
+        <label for='apiDomain'>API Domain:</label>
+        <input type='text' id='apiDomain' name='apiDomain' placeholder='archers.himmelix.ch' value='archers.himmelix.ch'>
+        <div class='info'>Enter the domain of your tournament API (without https://)</div>
+      </div>
+      
+      <div class='form-group'>
         <label for='tournamentId'>Tournament ID:</label>
         <input type='number' id='tournamentId' name='tournamentId' placeholder='Enter tournament ID' min='0' step='1'>
         <div class='info'>Enter the numeric ID of your tournament</div>
       </div>
       
       <button type='submit' class='btn-primary' id='save-btn'>Save</button>
-      <button type='button' class='btn-danger' onclick='clearConfig()'>Clear Tournament ID</button>
+      <button type='button' class='btn-danger' onclick='clearConfig()'>Clear Tournament Config</button>
     </form>
+    
+    <div id='participants-list' class='participants-box'>
+      <h3 id='participants-status'>Loading participants...</h3>
+      <div id='participants-container'></div>
+      <button type='button' class='btn-secondary' onclick='loadParticipants()' style='margin-top: 1em;'>Refresh Participants</button>
+    </div>
     
     <div style='margin-top: 2em; padding-top: 2em; border-top: 1px solid #ccc;'>
       <a href='/' style='display:inline-block;padding:0.8em 1.5em;background:#666;color:white;text-decoration:none;border-radius:0.3em;'>Back to Timer</a>
     </div>
     
     <div class='info' style='margin-top: 2em; padding: 1em; background: #e8f4ff; border-radius: 0.3em;'>
-      <strong>Note:</strong> The tournament ID is used to integrate this timer with your tournament management application. 
-      Enter the numeric ID provided by your tournament system to link this device with your tournament.
+      <strong>Note:</strong> Configure the API domain and tournament ID to integrate this timer with your tournament management application. 
+      The API domain should point to your tournament system (e.g., archers.himmelix.ch or a test environment). 
+      Enter the numeric tournament ID provided by your tournament system to link this device with your tournament.
       <br><br>
       The configuration is stored persistently and will be retained after device restart or power loss.
     </div>
