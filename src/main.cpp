@@ -47,6 +47,9 @@ Preferences preferences;
 bool isStationMode = false;
 String currentSSID = "";
 
+// Tournament ID
+int tournamentId = -1;  // -1 means not set
+
 // Button long press for WiFi reset
 unsigned long buttonPressStartTime = 0;
 bool buttonPressed = false;
@@ -159,6 +162,9 @@ void setup() {
   String savedSSID = preferences.getString("ssid", "");
   String savedPassword = preferences.getString("password", "");
   
+  // Load tournament ID
+  tournamentId = preferences.getInt("tournamentId", -1);
+  
   bool connected = false;
   if (savedSSID.length() > 0) {
     connected = connectToWiFi(savedSSID, savedPassword);
@@ -225,6 +231,37 @@ void setup() {
     server.send(200, "text/plain", "WiFi configuration cleared. Device will restart in AP mode...");
     delay(1000);
     ESP.restart();
+  });
+  
+  // Tournament endpoints
+  server.on("/tournament-status", HTTP_GET, []() {
+    String json = "{";
+    if (tournamentId >= 0) {
+      json += "\"tournamentId\":" + String(tournamentId);
+    } else {
+      json += "\"tournamentId\":null";
+    }
+    json += "}";
+    server.send(200, "application/json", json);
+  });
+  
+  server.on("/tournament-save", HTTP_POST, []() {
+    if (server.hasArg("tournamentId")) {
+      tournamentId = server.arg("tournamentId").toInt();
+      
+      // Save to preferences
+      preferences.putInt("tournamentId", tournamentId);
+      
+      server.send(200, "text/plain", "Tournament ID saved successfully");
+    } else {
+      server.send(400, "text/plain", "Missing tournament ID");
+    }
+  });
+  
+  server.on("/tournament-clear", HTTP_POST, []() {
+    tournamentId = -1;
+    preferences.remove("tournamentId");
+    server.send(200, "text/plain", "Tournament ID cleared successfully");
   });
   
   server.on("/reset", HTTP_POST, []() {

@@ -34,6 +34,9 @@ void setupWebServer(WebServer& server) {
     server.on("/config", [&]() {
         server.send(200, "text/html", getConfigHtml());
     });
+    server.on("/tournament-config", [&]() {
+        server.send(200, "text/html", getTournamentConfigHtml());
+    });
 }
 
 // The getHtml() function will be moved here from main.cpp
