@@ -110,7 +110,7 @@ String getHtml() {
     <p style='color:gray;font-size:12px;'>Updates every 0.5 seconds</p>
     <p style='color:gray;font-size:12px;'>M5 Atom S3 Arrow Timer by norog242</p>
     <div style='margin-top:2em;'>
-      <a href='/config' style='display:inline-block;padding:0.8em 1.5em;background:#0066cc;color:white;text-decoration:none;border-radius:0.3em;font-size:1.1em;'>⚙️ WiFi Settings</a>
+      <a href='/config' style='display:inline-block;padding:0.8em 1.5em;background:#0066cc;color:white;text-decoration:none;border-radius:0.3em;font-size:1.1em;'>WiFi Settings</a>
     </div>
     <script>
       function updateLastDurations(arr) {
@@ -283,12 +283,12 @@ String getConfigHtml() {
         <div class='info'>Leave empty for open networks</div>
       </div>
       
-      <button type='submit' class='btn-primary' id='save-btn'>💾 Save & Restart</button>
-      <button type='button' class='btn-danger' onclick='clearConfig()'>🗑️ Clear Configuration</button>
+      <button type='submit' class='btn-primary' id='save-btn'>Save & Restart</button>
+      <button type='button' class='btn-danger' onclick='clearConfig()'>Clear Configuration</button>
     </form>
     
     <div style='margin-top: 2em; padding-top: 2em; border-top: 1px solid #ccc;'>
-      <a href='/' style='display:inline-block;padding:0.8em 1.5em;background:#666;color:white;text-decoration:none;border-radius:0.3em;'>← Back to Timer</a>
+      <a href='/' style='display:inline-block;padding:0.8em 1.5em;background:#666;color:white;text-decoration:none;border-radius:0.3em;'>Back to Timer</a>
     </div>
     
     <div class='info' style='margin-top: 2em; padding: 1em; background: #fffbcc; border-radius: 0.3em;'>
