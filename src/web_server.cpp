@@ -28,8 +28,23 @@ void setupWebServer(WebServer& server) {
         server.sendHeader("Content-Type", "font/woff");
         server.send_P(200, "font/woff", (const char*)digital7_woff, digital7_woff_len);
     });
+    server.on("/common.css", HTTP_GET, [&]() {
+        server.send(200, "text/css", getCommonCss());
+    });
+    server.on("/translations.js", HTTP_GET, [&]() {
+        server.send(200, "application/javascript; charset=utf-8", getTranslationsJs());
+    });
     server.on("/", [&]() {
         server.send(200, "text/html", getHtml());
+    });
+    server.on("/config", [&]() {
+        server.send(200, "text/html", getConfigHtml());
+    });
+    server.on("/device-settings", [&]() {
+        server.send(200, "text/html", getDeviceSettingsHtml());
+    });
+    server.on("/tournament-config", [&]() {
+        server.send(200, "text/html", getTournamentConfigHtml());
     });
 }
 
