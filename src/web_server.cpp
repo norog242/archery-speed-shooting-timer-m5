@@ -32,7 +32,7 @@ void setupWebServer(WebServer& server) {
         server.send(200, "text/css", getCommonCss());
     });
     server.on("/translations.js", HTTP_GET, [&]() {
-        server.send(200, "application/javascript", getTranslationsJs());
+        server.send(200, "application/javascript; charset=utf-8", getTranslationsJs());
     });
     server.on("/", [&]() {
         server.send(200, "text/html", getHtml());
