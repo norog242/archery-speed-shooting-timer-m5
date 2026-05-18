@@ -18,6 +18,7 @@ bool finished = false;
 // Configurable settings
 int maxArrows = 10;
 float sensitivityThreshold = 1200.0;
+String language = "EN"; // EN or DE
 // Store last 5 durations
 #define MAX_ATTEMPTS 5
 float lastDurations[MAX_ATTEMPTS] = {0};
@@ -175,6 +176,7 @@ void setup() {
   // Load device settings
   maxArrows = preferences.getInt("maxArrows", 10);
   sensitivityThreshold = preferences.getFloat("sensitivity", 1200.0);
+  language = preferences.getString("language", "EN");
   
   bool connected = false;
   if (savedSSID.length() > 0) {
@@ -249,24 +251,28 @@ void setup() {
     String json = "{";
     json += "\"maxArrows\":" + String(maxArrows);
     json += ",\"sensitivity\":" + String(sensitivityThreshold, 1);
+    json += ",\"language\":\"" + language + "\"";
     json += "}";
     server.send(200, "application/json", json);
   });
   
   server.on("/device-settings-save", HTTP_POST, []() {
-    if (server.hasArg("maxArrows") && server.hasArg("sensitivity")) {
+    if (server.hasArg("maxArrows") && server.hasArg("sensitivity") && server.hasArg("language")) {
       maxArrows = server.arg("maxArrows").toInt();
       sensitivityThreshold = server.arg("sensitivity").toFloat();
+      language = server.arg("language");
       
       // Validate ranges
       if (maxArrows < 1) maxArrows = 1;
       if (maxArrows > 50) maxArrows = 50;
       if (sensitivityThreshold < 500.0) sensitivityThreshold = 500.0;
       if (sensitivityThreshold > 1500.0) sensitivityThreshold = 1500.0;
+      if (language != "EN" && language != "DE") language = "EN";
       
       // Save to preferences
       preferences.putInt("maxArrows", maxArrows);
       preferences.putFloat("sensitivity", sensitivityThreshold);
+      preferences.putString("language", language);
       
       server.send(200, "text/plain", "Device settings saved successfully");
     } else {

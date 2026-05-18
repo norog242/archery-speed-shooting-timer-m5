@@ -1,6 +1,140 @@
 #include "web_server.h"
 #include <Arduino.h>
 
+String getTranslationsJs() {
+  String js = R"rawliteral(
+const translations = {
+  EN: {
+    // Main page
+    arrowCount: 'Arrow Count:',
+    time: 'Time:',
+    score: 'Score:',
+    points: 'Points:',
+    reset: 'Reset',
+    start: 'Start',
+    saveTournamentResult: 'Save Tournament result (ID:',
+    selectArcher: '-- Select Archer --',
+    save: 'Save',
+    lastAttempts: 'Last 5 Attempts',
+    deviceSettings: 'Device Settings',
+    wifiSettings: 'WiFi Settings',
+    tournamentSettings: 'Tournament Settings',
+    updates: 'Updates every 0.5 seconds',
+    pleaseSelect: 'Please select an archer',
+    pleaseComplete: 'Please complete',
+    arrowsBefore: 'arrows before saving to tournament',
+    invalidDuration: 'Invalid duration',
+    saving: 'Saving...',
+    savedSuccessfully: 'Result saved successfully for',
+    errorMsg: 'Error:',
+    
+    // Device Settings page
+    title: 'Device Settings',
+    currentSettings: 'Current Settings:',
+    numArrows: 'Number of Arrows:',
+    sensitivityThreshold: 'Sensitivity Threshold:',
+    language: 'Language:',
+    configureSettings: 'Configure Timer Settings',
+    numArrowsLabel: 'Number of Arrows:',
+    numArrowsInfo: 'Set how many arrows to count before stopping the timer (default: 10)',
+    sensitivityLabel: 'Sensitivity Threshold:',
+    sensitivityInfo: 'Adjust the acceleration threshold for detecting arrow impacts (500-1500 milli-g, default: 1200)',
+    lowerValues: 'Lower values',
+    moreSensitive: 'more sensitive (may detect false positives)',
+    higherValues: 'Higher values',
+    lessSensitive: 'less sensitive (may miss softer impacts)',
+    languageLabel: 'Language:',
+    languageInfo: 'Select interface language',
+    resetDefaults: 'Reset to Defaults',
+    backToTimer: 'Back to Timer',
+    noteTitle: 'Note:',
+    noteText: 'These settings control the basic operation of the arrow timer device. The number of arrows determines when the timer stops counting, and the sensitivity threshold controls how strong an impact must be to register as an arrow hit.',
+    noteText2: 'All settings are stored persistently and will be retained after device restart or power loss.',
+    tipTitle: 'Tip:',
+    tipText: 'If the timer is too sensitive (counting accidental bumps) or not sensitive enough (missing arrow impacts), adjust the sensitivity threshold. Start with small adjustments of ±50-100 milli-g.',
+    validArrows: 'Please enter a valid number of arrows (minimum 1)',
+    savedSuccess: 'Device settings saved successfully!',
+    errorSaving: 'Error saving device settings:',
+    resetConfirm: 'Are you sure you want to reset to default settings? (10 arrows, 1200 milli-g sensitivity, English language)',
+    resetMessage: 'Settings reset to defaults. Click Save to apply.',
+    error: 'Error',
+    loading: 'Loading...'
+  },
+  DE: {
+    // Main page
+    arrowCount: 'Pfeilanzahl:',
+    time: 'Zeit:',
+    score: 'Punkte:',
+    points: 'Punkte:',
+    reset: 'Zurücksetzen',
+    start: 'Start',
+    saveTournamentResult: 'Turnierergebnis speichern (ID:',
+    selectArcher: '-- Schütze auswählen --',
+    save: 'Speichern',
+    lastAttempts: 'Letzte 5 Versuche',
+    deviceSettings: 'Geräteeinstellungen',
+    wifiSettings: 'WLAN-Einstellungen',
+    tournamentSettings: 'Turniereinstellungen',
+    updates: 'Aktualisierung alle 0.5 Sekunden',
+    pleaseSelect: 'Bitte wählen Sie einen Schützen',
+    pleaseComplete: 'Bitte absolvieren Sie',
+    arrowsBefore: 'Pfeile vor dem Speichern im Turnier',
+    invalidDuration: 'Ungültige Dauer',
+    saving: 'Speichert...',
+    savedSuccessfully: 'Ergebnis erfolgreich gespeichert für',
+    errorMsg: 'Fehler:',
+    
+    // Device Settings page
+    title: 'Geräteeinstellungen',
+    currentSettings: 'Aktuelle Einstellungen:',
+    numArrows: 'Anzahl Pfeile:',
+    sensitivityThreshold: 'Empfindlichkeitsschwelle:',
+    language: 'Sprache:',
+    configureSettings: 'Timer-Einstellungen konfigurieren',
+    numArrowsLabel: 'Anzahl Pfeile:',
+    numArrowsInfo: 'Legen Sie fest, wie viele Pfeile gezählt werden sollen, bevor der Timer stoppt (Standard: 10)',
+    sensitivityLabel: 'Empfindlichkeitsschwelle:',
+    sensitivityInfo: 'Passen Sie die Beschleunigungsschwelle für die Erkennung von Pfeileinschlägen an (500-1500 milli-g, Standard: 1200)',
+    lowerValues: 'Niedrigere Werte',
+    moreSensitive: 'empfindlicher (kann Fehlalarme erkennen)',
+    higherValues: 'Höhere Werte',
+    lessSensitive: 'weniger empfindlich (kann weiche Einschläge verpassen)',
+    languageLabel: 'Sprache:',
+    languageInfo: 'Sprache der Benutzeroberfläche auswählen',
+    resetDefaults: 'Standardwerte',
+    backToTimer: 'Zurück zum Timer',
+    noteTitle: 'Hinweis:',
+    noteText: 'Diese Einstellungen steuern den Basisbetrieb des Pfeil-Timer-Geräts. Die Anzahl der Pfeile bestimmt, wann der Timer stoppt, und die Empfindlichkeitsschwelle bestimmt, wie stark ein Einschlag sein muss, um als Pfeiltreffer erkannt zu werden.',
+    noteText2: 'Alle Einstellungen werden dauerhaft gespeichert und bleiben nach einem Neustart oder Stromausfall erhalten.',
+    tipTitle: 'Tipp:',
+    tipText: 'Wenn der Timer zu empfindlich ist (zählt versehentliche Stöße) oder nicht empfindlich genug ist (verpasst Pfeileinschläge), passen Sie die Empfindlichkeitsschwelle an. Beginnen Sie mit kleinen Anpassungen von ±50-100 milli-g.',
+    validArrows: 'Bitte geben Sie eine gültige Anzahl von Pfeilen ein (mindestens 1)',
+    savedSuccess: 'Geräteeinstellungen erfolgreich gespeichert!',
+    errorSaving: 'Fehler beim Speichern der Geräteeinstellungen:',
+    resetConfirm: 'Möchten Sie wirklich auf die Standardeinstellungen zurücksetzen? (10 Pfeile, 1200 milli-g Empfindlichkeit, Englische Sprache)',
+    resetMessage: 'Einstellungen auf Standardwerte zurückgesetzt. Klicken Sie auf Speichern, um anzuwenden.',
+    error: 'Fehler',
+    loading: 'Wird geladen...'
+  }
+};
+
+function applyTranslations() {
+  const t = translations[window.currentLang || 'EN'];
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key]) {
+      if (el.tagName === 'INPUT' && el.type === 'submit') {
+        el.value = t[key];
+      } else {
+        el.textContent = t[key];
+      }
+    }
+  });
+}
+  )rawliteral";
+  return js;
+}
+
 String getCommonCss() {
   String css = R"rawliteral(
 :root {
@@ -350,8 +484,10 @@ String getHtml() {
         font-size: 12px;
       }
     </style>
+    <script src='/translations.js'></script>
     <script>
-      let maxArrows = 10; // Default, will be loaded dynamically
+      let maxArrows = 10;
+      window.currentLang = 'EN';
       
       function updateData() {
         fetch('/data').then(r => r.json()).then(d => {
@@ -370,15 +506,15 @@ String getHtml() {
     </script>
     </head><body>
     <div id='arrows-container' class='status-container'>
-        <h2>Arrow Count:</h2>
+        <h2 data-i18n='arrowCount'>Arrow Count:</h2>
         <div id='arrows' class='segment'>-</div>
     </div>
     <div id='duration-container' class='status-container'>
-        <h2>Time:</h2>
+        <h2 data-i18n='time'>Time:</h2>
         <div id='duration' class='segment'>-</div>
     </div>
     <div id='points-container' class='status-container'>
-      <h4>Score:</h4>
+      <h4 data-i18n='score'>Score:</h4>
       <div id='score' class='segment-small'>-</div>
     </div>
     <form id='pointsForm' action='/reset' method='POST' class='points-form' onsubmit='return submitWithScore(event)'>
@@ -402,7 +538,7 @@ String getHtml() {
               return true;
             }
           </script>
-      <label for='points' class='points-label'>Points: </label>
+      <label for='points' class='points-label' data-i18n='points'>Points: </label>
       <button type='button' class='points-btn' onclick='changePoints(-10)'>-10</button>
       <button type='button' class='points-btn' onclick='changePoints(-1)'>-1</button>
       <input type='number' id='points' name='points' min='0' value='0' class='points-input'>
@@ -411,12 +547,12 @@ String getHtml() {
       
         <!-- Tournament Integration Section -->
       <div id='tournament-section' class='tournament-section'>
-        <h4>Save Tournament result (ID: <strong id='tournament-id-display'>-</strong>)</h4>
+        <h4><span data-i18n='saveTournamentResult'>Save Tournament result (ID:</span> <strong id='tournament-id-display'>-</strong>)</h4>
         <div class='tournament-form'>
           <select id='username-select' style='min-width:250px;'>
-            <option value=''>-- Select Archer --</option>
+            <option value='' data-i18n='selectArcher'>-- Select Archer --</option>
           </select>
-          <button id='save-tournament-btn' onclick='saveToTournament()' disabled>Save</button>
+          <button id='save-tournament-btn' onclick='saveToTournament()' disabled data-i18n='save'>Save</button>
           <div id='tournament-message' class='tournament-message'></div>
         </div>
       </div>
@@ -444,23 +580,24 @@ String getHtml() {
       });
       function updateResetBtnLabel(arrows) {
         const btn = document.getElementById('resetBtn');
-        if (btn) btn.textContent = (arrows === maxArrows) ? 'Start' : 'Reset';
+        const t = translations[window.currentLang];
+        if (btn) btn.textContent = (arrows === maxArrows) ? t.start : t.reset;
       }
     </script>
     <div style='margin:1em 0;'>
-      <h4>Last 5 Attempts</h4>
+      <h4 data-i18n='lastAttempts'>Last 5 Attempts</h4>
       <ul id='lastDurations'>
         <li>-</li>
       </ul>
     </div>
     
     <div style='margin-top:2em;'>
-      <a href='/device-settings' class='nav-btn'>Device Settings</a>
-      <a href='/config' class='nav-btn'>WiFi Settings</a>
-      <a href='/tournament-config' class='nav-btn'>Tournament Settings</a>
+      <a href='/device-settings' class='nav-btn' data-i18n='deviceSettings'>Device Settings</a>
+      <a href='/config' class='nav-btn' data-i18n='wifiSettings'>WiFi Settings</a>
+      <a href='/tournament-config' class='nav-btn' data-i18n='tournamentSettings'>Tournament Settings</a>
     </div>
     
-    <p class='footer-text'>Updates every 0.5 seconds</p>
+    <p class='footer-text' data-i18n='updates'>Updates every 0.5 seconds</p>
     <p class='footer-text'>M5 Atom S3 Arrow Timer by norog242</p>
     <script>
       function updateLastDurations(arr) {
@@ -515,7 +652,8 @@ String getHtml() {
           return response.json();
         })
         .then(result => {
-          select.innerHTML = '<option value="">-- Select Archer --</option>';
+          const t = translations[window.currentLang];
+          select.innerHTML = '<option value="">' + t.selectArcher + '</option>';
           
           if (result.data && result.data.length > 0) {
             result.data.forEach(participant => {
@@ -541,9 +679,10 @@ String getHtml() {
       function saveToTournament() {
         const participantId = document.getElementById('username-select').value;
         const participantName = document.getElementById('username-select').options[document.getElementById('username-select').selectedIndex].text;
+        const t = translations[window.currentLang];
         
         if (!participantId) {
-          showTournamentMessage('Please select an archer', 'error');
+          showTournamentMessage(t.pleaseSelect, 'error');
           return;
         }
         
@@ -553,18 +692,18 @@ String getHtml() {
         const arrows = parseInt(document.getElementById('arrows').textContent) || 0;
         
         if (arrows !== maxArrows) {
-          showTournamentMessage('Please complete ' + maxArrows + ' arrows before saving to tournament', 'error');
+          showTournamentMessage(t.pleaseComplete + ' ' + maxArrows + ' ' + t.arrowsBefore, 'error');
           return;
         }
         
         if (duration <= 0) {
-          showTournamentMessage('Invalid duration', 'error');
+          showTournamentMessage(t.invalidDuration, 'error');
           return;
         }
         
         const btn = document.getElementById('save-tournament-btn');
         btn.disabled = true;
-        btn.textContent = 'Saving...';
+        btn.textContent = t.saving;
         
         const formData = new URLSearchParams();
         formData.append('participantId', participantId);
@@ -585,14 +724,16 @@ String getHtml() {
           return response.json();
         })
         .then(result => {
-          showTournamentMessage('Result saved successfully for ' + participantName + '!', 'success');
+          const t = translations[window.currentLang];
+          showTournamentMessage(t.savedSuccessfully + ' ' + participantName + '!', 'success');
           btn.disabled = false;
-          btn.textContent = 'Save';
+          btn.textContent = t.save;
         })
         .catch(error => {
-          showTournamentMessage('Error: ' + error.message, 'error');
+          const t = translations[window.currentLang];
+          showTournamentMessage(t.errorMsg + ' ' + error.message, 'error');
           btn.disabled = false;
-          btn.textContent = 'Save';
+          btn.textContent = t.save;
         });
       }
       
@@ -619,9 +760,11 @@ String getHtml() {
       window.onload = function() {
         updateData();
         loadTournamentStatus();
-        // Load device settings
+        // Load device settings including language
         fetch('/device-settings-status').then(r => r.json()).then(d => {
           maxArrows = d.maxArrows;
+          window.currentLang = d.language || 'EN';
+          applyTranslations();
         }).catch(e => {
           console.error('Error loading device settings:', e);
         });
@@ -963,19 +1106,30 @@ String getDeviceSettingsHtml() {
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Device Settings</title>
     <link rel='stylesheet' href='/common.css'>
+    <script src='/translations.js'></script>
     <script>
+      window.currentLang = 'EN';
+      
       function loadStatus() {
         fetch('/device-settings-status').then(r => r.json()).then(d => {
+          window.currentLang = d.language || 'EN';
+          applyTranslations();
+          const t = translations[window.currentLang];
+          document.title = t.title;
+          
           document.getElementById('current-arrows').textContent = d.maxArrows;
           document.getElementById('current-sensitivity').textContent = d.sensitivity.toFixed(0) + ' milli-g';
+          document.getElementById('current-language').textContent = window.currentLang === 'EN' ? 'English' : 'Deutsch';
           
           document.getElementById('maxArrows').value = d.maxArrows;
           document.getElementById('sensitivity').value = d.sensitivity;
           document.getElementById('sensitivityValue').textContent = d.sensitivity.toFixed(0) + ' milli-g';
+          document.getElementById('language').value = d.language || 'EN';
         }).catch(e => {
           console.error('Error loading status:', e);
-          document.getElementById('current-arrows').textContent = 'Error';
-          document.getElementById('current-sensitivity').textContent = 'Error';
+          const t = translations[window.currentLang];
+          document.getElementById('current-arrows').textContent = t.error;
+          document.getElementById('current-sensitivity').textContent = t.error;
         });
       }
       
@@ -986,20 +1140,23 @@ String getDeviceSettingsHtml() {
       
       function saveConfig(event) {
         event.preventDefault();
+        const t = translations[window.currentLang];
         const maxArrows = document.getElementById('maxArrows').value;
         const sensitivity = document.getElementById('sensitivity').value;
+        const language = document.getElementById('language').value;
         
         if (!maxArrows || maxArrows < 1) {
-          showMessage('Please enter a valid number of arrows (minimum 1)', 'error');
+          showMessage(t.validArrows, 'error');
           return;
         }
         
         const formData = new URLSearchParams();
         formData.append('maxArrows', maxArrows);
         formData.append('sensitivity', sensitivity);
+        formData.append('language', language);
         
         document.getElementById('save-btn').disabled = true;
-        document.getElementById('save-btn').textContent = 'Saving...';
+        document.getElementById('save-btn').textContent = t.saving;
         
         fetch('/device-settings-save', {
           method: 'POST',
@@ -1008,27 +1165,34 @@ String getDeviceSettingsHtml() {
         })
         .then(response => response.text())
         .then(data => {
-          showMessage('Device settings saved successfully!', 'success');
+          window.currentLang = language;
+          const t = translations[window.currentLang];
+          document.title = t.title;
+          applyTranslations();
+          showMessage(t.savedSuccess, 'success');
           document.getElementById('save-btn').disabled = false;
-          document.getElementById('save-btn').textContent = 'Save';
+          document.getElementById('save-btn').textContent = t.save;
           loadStatus();
         })
         .catch(error => {
-          showMessage('Error saving device settings: ' + error, 'error');
+          const t = translations[window.currentLang];
+          showMessage(t.errorSaving + ' ' + error, 'error');
           document.getElementById('save-btn').disabled = false;
-          document.getElementById('save-btn').textContent = 'Save';
+          document.getElementById('save-btn').textContent = t.save;
         });
       }
       
       function resetToDefaults() {
-        if (!confirm('Are you sure you want to reset to default settings? (10 arrows, 1200 milli-g sensitivity)')) {
+        const t = translations[window.currentLang];
+        if (!confirm(t.resetConfirm)) {
           return;
         }
         
         document.getElementById('maxArrows').value = 10;
         document.getElementById('sensitivity').value = 1200;
+        document.getElementById('language').value = 'EN';
         updateSensitivityDisplay();
-        showMessage('Settings reset to defaults. Click Save to apply.', 'success');
+        showMessage(t.resetMessage, 'success');
       }
       
       function showMessage(text, type) {
@@ -1041,54 +1205,61 @@ String getDeviceSettingsHtml() {
       window.onload = loadStatus;
     </script>
     </head><body>
-    <h1>Device Settings</h1>
+    <h1 data-i18n='title'>Device Settings</h1>
     
     <div class='status-box'>
-      <strong>Current Settings:</strong>
-      <p><strong>Number of Arrows:</strong> <span id='current-arrows'>Loading...</span></p>
-      <p><strong>Sensitivity Threshold:</strong> <span id='current-sensitivity'>Loading...</span></p>
+      <strong data-i18n='currentSettings'>Current Settings:</strong>
+      <p><strong data-i18n='numArrows'>Number of Arrows:</strong> <span id='current-arrows'>Loading...</span></p>
+      <p><strong data-i18n='sensitivityThreshold'>Sensitivity Threshold:</strong> <span id='current-sensitivity'>Loading...</span></p>
+      <p><strong data-i18n='language'>Language:</strong> <span id='current-language'>Loading...</span></p>
     </div>
     
     <div id='message' style='display:none;'></div>
     
-    <h2>Configure Timer Settings</h2>
+    <h2 data-i18n='configureSettings'>Configure Timer Settings</h2>
     <form onsubmit='saveConfig(event)'>
       <div class='form-group'>
-        <label for='maxArrows'>Number of Arrows:</label>
+        <label for='maxArrows' data-i18n='numArrowsLabel'>Number of Arrows:</label>
         <input type='number' id='maxArrows' name='maxArrows' placeholder='10' min='1' max='50' step='1' value='10'>
-        <div class='info'>Set how many arrows to count before stopping the timer (default: 10)</div>
+        <div class='info' data-i18n='numArrowsInfo'>Set how many arrows to count before stopping the timer (default: 10)</div>
       </div>
       
       <div class='form-group'>
-        <label for='sensitivity'>Sensitivity Threshold:</label>
+        <label for='sensitivity' data-i18n='sensitivityLabel'>Sensitivity Threshold:</label>
         <div class='slider-container'>
           <input type='range' id='sensitivity' name='sensitivity' min='500' max='1500' step='10' value='1200' oninput='updateSensitivityDisplay()'>
           <span class='slider-value' id='sensitivityValue'>1200 milli-g</span>
         </div>
-        <div class='info'>Adjust the acceleration threshold for detecting arrow impacts (500-1500 milli-g, default: 1200)</div>
+        <div class='info' data-i18n='sensitivityInfo'>Adjust the acceleration threshold for detecting arrow impacts (500-1500 milli-g, default: 1200)</div>
         <div class='info' style='margin-top: 0.5em;'>
-          <strong>Lower values</strong> = more sensitive (may detect false positives)<br>
-          <strong>Higher values</strong> = less sensitive (may miss softer impacts)
+          <strong data-i18n='lowerValues'>Lower values</strong> = <span data-i18n='moreSensitive'>more sensitive (may detect false positives)</span><br>
+          <strong data-i18n='higherValues'>Higher values</strong> = <span data-i18n='lessSensitive'>less sensitive (may miss softer impacts)</span>
         </div>
       </div>
       
-      <button type='submit' class='btn-primary' id='save-btn'>Save</button>
-      <button type='button' class='btn-secondary' onclick='resetToDefaults()'>Reset to Defaults</button>
+      <div class='form-group'>
+        <label for='language' data-i18n='languageLabel'>Language:</label>
+        <select id='language' name='language' style='width:100%;padding:0.8em;font-size:1em;border:1px solid var(--border-color);border-radius:var(--radius-sm);box-sizing:border-box;'>
+          <option value='EN'>English</option>
+          <option value='DE'>Deutsch</option>
+        </select>
+        <div class='info' data-i18n='languageInfo'>Select interface language</div>
+      </div>
+      
+      <button type='submit' class='btn-primary' id='save-btn' data-i18n='save'>Save</button>
+      <button type='button' class='btn-secondary' onclick='resetToDefaults()' data-i18n='resetDefaults'>Reset to Defaults</button>
     </form>
     
     <div class='divider'>
-      <a href='/' class='nav-btn'>Back to Timer</a>
+      <a href='/' class='nav-btn' data-i18n='backToTimer'>Back to Timer</a>
     </div>
     
     <div class='info-box' style='background:#fff3cd;'>
-      <strong>Note:</strong> These settings control the basic operation of the arrow timer device. 
-      The number of arrows determines when the timer stops counting, and the sensitivity threshold controls 
-      how strong an impact must be to register as an arrow hit.
+      <strong data-i18n='noteTitle'>Note:</strong> <span data-i18n='noteText'>These settings control the basic operation of the arrow timer device. The number of arrows determines when the timer stops counting, and the sensitivity threshold controls how strong an impact must be to register as an arrow hit.</span>
       <br><br>
-      All settings are stored persistently and will be retained after device restart or power loss.
+      <span data-i18n='noteText2'>All settings are stored persistently and will be retained after device restart or power loss.</span>
       <br><br>
-      <strong>Tip:</strong> If the timer is too sensitive (counting accidental bumps) or not sensitive enough 
-      (missing arrow impacts), adjust the sensitivity threshold. Start with small adjustments of ±50-100 milli-g.
+      <strong data-i18n='tipTitle'>Tip:</strong> <span data-i18n='tipText'>If the timer is too sensitive (counting accidental bumps) or not sensitive enough (missing arrow impacts), adjust the sensitivity threshold. Start with small adjustments of ±50-100 milli-g.</span>
     </div>
     </body></html>
   )rawliteral";

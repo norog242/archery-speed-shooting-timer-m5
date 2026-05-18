@@ -31,6 +31,9 @@ void setupWebServer(WebServer& server) {
     server.on("/common.css", HTTP_GET, [&]() {
         server.send(200, "text/css", getCommonCss());
     });
+    server.on("/translations.js", HTTP_GET, [&]() {
+        server.send(200, "application/javascript", getTranslationsJs());
+    });
     server.on("/", [&]() {
         server.send(200, "text/html", getHtml());
     });

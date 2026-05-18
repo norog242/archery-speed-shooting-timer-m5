@@ -3,6 +3,7 @@
 
 void setupWebServer(WebServer& server);
 String getCommonCss();
+String getTranslationsJs();
 String getHtml();
 String getConfigHtml();
 String getTournamentConfigHtml();
