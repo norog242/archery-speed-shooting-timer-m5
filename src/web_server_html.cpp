@@ -1,17 +1,210 @@
 #include "web_server.h"
 #include <Arduino.h>
 
+String getCommonCss() {
+  String css = R"rawliteral(
+:root {
+  --primary: #0066cc;
+  --primary-hover: #0052a3;
+  --secondary: #666;
+  --danger: #cc0000;
+  --success-bg: #d4edda;
+  --success-text: #155724;
+  --error-bg: #f8d7da;
+  --error-text: #721c24;
+  --info-bg: #fffbcc;
+  --info-text: #666;
+  --border-color: #ccc;
+  --box-bg: #f0f0f0;
+  --radius-sm: 0.3em;
+  --radius-md: 0.5em;
+}
+
+body {
+  font-family: sans-serif;
+  max-width: 600px;
+  margin: 2em auto;
+  padding: 1em;
+}
+
+h1 {
+  color: #333;
+}
+
+.status-box {
+  background: var(--box-bg);
+  padding: 1em;
+  border-radius: var(--radius-md);
+  margin-bottom: 1.5em;
+}
+
+.status-box strong {
+  display: block;
+  margin-bottom: 0.5em;
+}
+
+.form-group {
+  margin-bottom: 1.5em;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.5em;
+  font-weight: bold;
+}
+
+input[type='text'],
+input[type='password'],
+input[type='number'] {
+  width: 100%;
+  padding: 0.8em;
+  font-size: 1em;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+}
+
+input[type='range'] {
+  width: 100%;
+  padding: 0;
+}
+
+button {
+  padding: 0.8em 2em;
+  font-size: 1.1em;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-right: 1em;
+  margin-top: 0.5em;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+  color: white;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.message {
+  padding: 1em;
+  margin: 1em 0;
+  border-radius: var(--radius-sm);
+}
+
+.message.success {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.message.error {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.info {
+  color: var(--info-text);
+  font-size: 0.9em;
+  margin-top: 0.5em;
+}
+
+.info-box {
+  margin-top: 2em;
+  padding: 1em;
+  border-radius: var(--radius-sm);
+}
+
+.nav-btn {
+  display: inline-block;
+  padding: 0.8em 1.5em;
+  background: var(--secondary);
+  color: white;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  font-size: 1.1em;
+  margin-right: 1em;
+  margin-bottom: 1em;
+}
+
+.divider {
+  margin-top: 2em;
+  padding-top: 2em;
+  border-top: 1px solid var(--border-color);
+}
+
+.participants-box {
+  background: #f9f9f9;
+  padding: 1em;
+  border-radius: var(--radius-md);
+  margin: 1.5em 0;
+}
+
+.participant-item {
+  padding: 0.5em;
+  border-bottom: 1px solid #ddd;
+}
+
+.participant-item:last-child {
+  border-bottom: none;
+}
+
+.participant-name {
+  font-weight: bold;
+}
+
+.participant-id {
+  color: var(--info-text);
+  font-size: 0.9em;
+  margin-left: 0.5em;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  gap: 1em;
+}
+
+.slider-value {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: var(--primary);
+  min-width: 100px;
+  text-align: center;
+}
+  )rawliteral";
+  return css;
+}
+
 String getHtml() {
   String html = R"rawliteral(
     <html><head>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Arrow Timer</title>
+    <link rel='stylesheet' href='/common.css'>
     <style>
+      body {
+        text-align: center;
+        max-width: 800px;
+      }
+      
       @font-face {
         font-family: 'Digital7';
         src: url('/digital7.woff') format('woff');
         font-display: swap;
       }
+      
       .segment {
         font-family: 'Digital7', monospace;
         font-weight: bold;
@@ -24,7 +217,8 @@ String getHtml() {
         display: inline-block;
         margin: 0.2em 0;
       }
-         .segment-small {
+      
+      .segment-small {
         font-family: 'Digital7', monospace;
         font-weight: bold;
         font-size: 2em;
@@ -36,15 +230,17 @@ String getHtml() {
         display: inline-block;
         margin: 0.2em 0;
       }
-     .status-container{
-      display:flex;
-      flex-direction:row;
-      flex-wrap:wrap;
-      justify-content:space-around;
-      align-items:center;
-      gap:2em;
-      margin-top:1em;
+      
+      .status-container {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-around;
+        align-items: center;
+        gap: 2em;
+        margin-top: 1em;
       }
+      
       .tournament-section {
         background: #e8f4ff;
         padding: 1.0em;
@@ -53,10 +249,12 @@ String getHtml() {
         max-width: 90%;
         display: none;
       }
+      
       .tournament-section h3 {
         margin-top: 0;
-        color: #0066cc;
+        color: var(--primary);
       }
+      
       .tournament-form {
         display: flex;
         flex-direction: row;
@@ -65,45 +263,96 @@ String getHtml() {
         align-items: center;
         justify-content: center;
       }
+      
       .tournament-form label {
         flex-basis: 100%;
         text-align: center;
       }
-      .tournament-form select, .tournament-form button {
+      
+      .tournament-form select,
+      .tournament-form button {
         font-size: 1.2em;
         padding: 0.8em 1.0em;
         border-radius: 0.3em;
-        border: 1px solid #ccc;
+        border: 1px solid var(--border-color);
       }
+      
       .tournament-form button {
-        background: #0066cc;
+        background: var(--primary);
         color: white;
         border: none;
         cursor: pointer;
       }
+      
       .tournament-form button:hover {
-        background: #0052a3;
+        background: var(--primary-hover);
       }
+      
       .tournament-form button:disabled {
-        background: #ccc;
+        background: var(--border-color);
         cursor: not-allowed;
       }
+      
       .tournament-message {
         padding: 0.8em;
         margin-top: 1em;
         border-radius: 0.3em;
         display: none;
       }
+      
       .tournament-message.success {
-        background: #d4edda;
-        color: #155724;
+        background: var(--success-bg);
+        color: var(--success-text);
       }
+      
       .tournament-message.error {
-        background: #f8d7da;
-        color: #721c24;
+        background: var(--error-bg);
+        color: var(--error-text);
+      }
+      
+      .points-form {
+        margin-bottom: 1em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      
+      .points-btn {
+        font-size: 1.5em;
+        padding: 0.5em 1em;
+        margin-right: 8px;
+      }
+      
+      .points-label {
+        font-size: 1.5em;
+      }
+      
+      .points-input {
+        font-size: 1.2em;
+        width: 5em;
+        margin: 0 8px;
+      }
+      
+      .reset-btn {
+        font-size: 1.5em;
+        padding: 0.5em 2em;
+        margin-left: 16px;
+        margin-top: 16px;
+        border: none;
+        border-radius: 0.2em;
+        width: 50%;
+      }
+      
+      .footer-text {
+        color: gray;
+        font-size: 12px;
       }
     </style>
     <script>
+      let maxArrows = 10; // Default, will be loaded dynamically
+      
       function updateData() {
         fetch('/data').then(r => r.json()).then(d => {
           document.getElementById('arrows').textContent = d.arrows;
@@ -119,7 +368,7 @@ String getHtml() {
       setInterval(updateData, 500);
       window.onload = updateData;
     </script>
-    </head><body style='font-family:sans-serif;text-align:center;'>
+    </head><body>
     <div id='arrows-container' class='status-container'>
         <h2>Arrow Count:</h2>
         <div id='arrows' class='segment'>-</div>
@@ -132,7 +381,7 @@ String getHtml() {
       <h4>Score:</h4>
       <div id='score' class='segment-small'>-</div>
     </div>
-    <form id='pointsForm' action='/reset' method='POST' style='margin-bottom:1em;display:flex;align-items:center;justify-content:center;gap:8px; flex-wrap:wrap;' onsubmit='return submitWithScore(event)'>
+    <form id='pointsForm' action='/reset' method='POST' class='points-form' onsubmit='return submitWithScore(event)'>
           <script>
             function submitWithScore(e) {
               // Add score as hidden input before submitting
@@ -153,12 +402,12 @@ String getHtml() {
               return true;
             }
           </script>
-      <label for='points' style='font-size:1.5em;'>Points: </label>
-      <button type='button' class='points-btn' onclick='changePoints(-10)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>-10</button>
-      <button type='button' class='points-btn' onclick='changePoints(-1)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>-1</button>
-      <input type='number' id='points' name='points' min='0' value='0' style='font-size:1.2em;width:5em;margin:0 8px;'>
-      <button type='button' class='points-btn' onclick='changePoints(1)' style='font-size:1.5em;padding:0.5em 1em;margin-right:8px;'>+1</button>
-      <button type='button' class='points-btn' onclick='changePoints(10)' style='font-size:1.5em;padding:0.5em 1em;'>+10</button>
+      <label for='points' class='points-label'>Points: </label>
+      <button type='button' class='points-btn' onclick='changePoints(-10)'>-10</button>
+      <button type='button' class='points-btn' onclick='changePoints(-1)'>-1</button>
+      <input type='number' id='points' name='points' min='0' value='0' class='points-input'>
+      <button type='button' class='points-btn' onclick='changePoints(1)'>+1</button>
+      <button type='button' class='points-btn' onclick='changePoints(10)'>+10</button>
       
         <!-- Tournament Integration Section -->
       <div id='tournament-section' class='tournament-section'>
@@ -172,7 +421,7 @@ String getHtml() {
         </div>
       </div>
 
-      <button id='resetBtn' style='font-size:1.5em;padding:0.5em 2em;margin-left:16px; margin-top:16px; border:none; border-radius:0.2em; width:50%' type='submit'>Reset</button>
+      <button id='resetBtn' class='reset-btn' type='submit'>Reset</button>
       </form>
     <script>
       function updateScoreField() {
@@ -195,7 +444,7 @@ String getHtml() {
       });
       function updateResetBtnLabel(arrows) {
         const btn = document.getElementById('resetBtn');
-        if (btn) btn.textContent = (arrows === 10) ? 'Start' : 'Reset';
+        if (btn) btn.textContent = (arrows === maxArrows) ? 'Start' : 'Reset';
       }
     </script>
     <div style='margin:1em 0;'>
@@ -206,12 +455,13 @@ String getHtml() {
     </div>
     
     <div style='margin-top:2em;'>
-      <a href='/config' style='display:inline-block;padding:0.8em 1.5em;background:grey;color:white;text-decoration:none;border-radius:0.3em;font-size:1.1em;margin-right:1em;'>WiFi Settings</a>
-      <a href='/tournament-config' style='display:inline-block;padding:0.8em 1.5em;background:grey;color:white;text-decoration:none;border-radius:0.3em;font-size:1.1em;'>Tournament Settings</a>
+      <a href='/device-settings' class='nav-btn'>Device Settings</a>
+      <a href='/config' class='nav-btn'>WiFi Settings</a>
+      <a href='/tournament-config' class='nav-btn'>Tournament Settings</a>
     </div>
     
-    <p style='color:gray;font-size:12px;'>Updates every 0.5 seconds</p>
-    <p style='color:gray;font-size:12px;'>M5 Atom S3 Arrow Timer by norog242</p>
+    <p class='footer-text'>Updates every 0.5 seconds</p>
+    <p class='footer-text'>M5 Atom S3 Arrow Timer by norog242</p>
     <script>
       function updateLastDurations(arr) {
         const ul = document.getElementById('lastDurations');
@@ -302,8 +552,8 @@ String getHtml() {
         const duration = parseFloat(durationText) || 0;
         const arrows = parseInt(document.getElementById('arrows').textContent) || 0;
         
-        if (arrows !== 10) {
-          showTournamentMessage('Please complete 10 arrows before saving to tournament', 'error');
+        if (arrows !== maxArrows) {
+          showTournamentMessage('Please complete ' + maxArrows + ' arrows before saving to tournament', 'error');
           return;
         }
         
@@ -369,6 +619,12 @@ String getHtml() {
       window.onload = function() {
         updateData();
         loadTournamentStatus();
+        // Load device settings
+        fetch('/device-settings-status').then(r => r.json()).then(d => {
+          maxArrows = d.maxArrows;
+        }).catch(e => {
+          console.error('Error loading device settings:', e);
+        });
       };
     </script>
     </body></html>
@@ -381,38 +637,7 @@ String getConfigHtml() {
     <html><head>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>WiFi Configuration</title>
-    <style>
-      body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; }
-      h1 { color: #333; }
-      .status-box { background: #f0f0f0; padding: 1em; border-radius: 0.5em; margin-bottom: 1.5em; }
-      .status-box strong { display: block; margin-bottom: 0.5em; }
-      .form-group { margin-bottom: 1.5em; }
-      label { display: block; margin-bottom: 0.5em; font-weight: bold; }
-      input[type='text'], input[type='password'] {
-        width: 100%;
-        padding: 0.8em;
-        font-size: 1em;
-        border: 1px solid #ccc;
-        border-radius: 0.3em;
-        box-sizing: border-box;
-      }
-      button {
-        padding: 0.8em 2em;
-        font-size: 1.1em;
-        border: none;
-        border-radius: 0.3em;
-        cursor: pointer;
-        margin-right: 1em;
-        margin-top: 0.5em;
-      }
-      .btn-primary { background: #0066cc; color: white; }
-      .btn-secondary { background: #666; color: white; }
-      .btn-danger { background: #cc0000; color: white; }
-      .message { padding: 1em; margin: 1em 0; border-radius: 0.3em; }
-      .message.success { background: #d4edda; color: #155724; }
-      .message.error { background: #f8d7da; color: #721c24; }
-      .info { color: #666; font-size: 0.9em; margin-top: 0.5em; }
-    </style>
+    <link rel='stylesheet' href='/common.css'>
     <script>
       function loadStatus() {
         fetch('/wifi-status').then(r => r.json()).then(d => {
@@ -491,7 +716,7 @@ String getConfigHtml() {
       window.onload = loadStatus;
     </script>
     </head><body>
-    <h1>⚙️ WiFi Configuration</h1>
+    <h1>WiFi Configuration</h1>
     
     <div class='status-box'>
       <strong>Current Status:</strong>
@@ -521,11 +746,11 @@ String getConfigHtml() {
       <button type='button' class='btn-danger' onclick='clearConfig()'>Clear Configuration</button>
     </form>
     
-    <div style='margin-top: 2em; padding-top: 2em; border-top: 1px solid #ccc;'>
-      <a href='/' style='display:inline-block;padding:0.8em 1.5em;background:#666;color:white;text-decoration:none;border-radius:0.3em;'>Back to Timer</a>
+    <div class='divider'>
+      <a href='/' class='nav-btn'>Back to Timer</a>
     </div>
     
-    <div class='info' style='margin-top: 2em; padding: 1em; background: #fffbcc; border-radius: 0.3em;'>
+    <div class='info-box' style='background:var(--info-bg);'>
       <strong>Note:</strong> After saving, the device will restart and attempt to connect to the specified WiFi network. 
       If connection fails, it will automatically fall back to Access Point mode (ArrowTimerAP).
       The configuration is stored persistently and will be used after power loss.
@@ -546,43 +771,11 @@ String getTournamentConfigHtml() {
     <html><head>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <title>Tournament Configuration</title>
+    <link rel='stylesheet' href='/common.css'>
     <style>
-      body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; }
-      h1 { color: #333; }
-      .status-box { background: #f0f0f0; padding: 1em; border-radius: 0.5em; margin-bottom: 1.5em; }
-      .status-box strong { display: block; margin-bottom: 0.5em; }
-      .form-group { margin-bottom: 1.5em; }
-      label { display: block; margin-bottom: 0.5em; font-weight: bold; }
-      input[type='number'] {
-        width: 100%;
-        padding: 0.8em;
-        font-size: 1em;
-        border: 1px solid #ccc;
-        border-radius: 0.3em;
-        box-sizing: border-box;
+      #participants-list {
+        display: none;
       }
-      button {
-        padding: 0.8em 2em;
-        font-size: 1.1em;
-        border: none;
-        border-radius: 0.3em;
-        cursor: pointer;
-        margin-right: 1em;
-        margin-top: 0.5em;
-      }
-      .btn-primary { background: #0066cc; color: white; }
-      .btn-secondary { background: #666; color: white; }
-      .btn-danger { background: #cc0000; color: white; }
-      .message { padding: 1em; margin: 1em 0; border-radius: 0.3em; }
-      .message.success { background: #d4edda; color: #155724; }
-      .message.error { background: #f8d7da; color: #721c24; }
-      .info { color: #666; font-size: 0.9em; margin-top: 0.5em; }
-      .participants-box { background: #f9f9f9; padding: 1em; border-radius: 0.5em; margin: 1.5em 0; }
-      .participant-item { padding: 0.5em; border-bottom: 1px solid #ddd; }
-      .participant-item:last-child { border-bottom: none; }
-      .participant-name { font-weight: bold; }
-      .participant-id { color: #666; font-size: 0.9em; margin-left: 0.5em; }
-      #participants-list { display: none; }
     </style>
     <script>
       function loadStatus() {
@@ -748,16 +941,154 @@ String getTournamentConfigHtml() {
       <button type='button' class='btn-secondary' onclick='loadParticipants()' style='margin-top: 1em;'>Refresh Participants</button>
     </div>
     
-    <div style='margin-top: 2em; padding-top: 2em; border-top: 1px solid #ccc;'>
-      <a href='/' style='display:inline-block;padding:0.8em 1.5em;background:#666;color:white;text-decoration:none;border-radius:0.3em;'>Back to Timer</a>
+    <div class='divider'>
+      <a href='/' class='nav-btn'>Back to Timer</a>
     </div>
     
-    <div class='info' style='margin-top: 2em; padding: 1em; background: #e8f4ff; border-radius: 0.3em;'>
+    <div class='info-box' style='background:#e8f4ff;'>
       <strong>Note:</strong> Configure the API domain and tournament ID to integrate this timer with your tournament management application. 
       The API domain should point to your tournament system (e.g., archers.himmelix.ch or a test environment). 
       Enter the numeric tournament ID provided by your tournament system to link this device with your tournament.
       <br><br>
       The configuration is stored persistently and will be retained after device restart or power loss.
+    </div>
+    </body></html>
+  )rawliteral";
+  return html;
+}
+
+String getDeviceSettingsHtml() {
+  String html = R"rawliteral(
+    <html><head>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Device Settings</title>
+    <link rel='stylesheet' href='/common.css'>
+    <script>
+      function loadStatus() {
+        fetch('/device-settings-status').then(r => r.json()).then(d => {
+          document.getElementById('current-arrows').textContent = d.maxArrows;
+          document.getElementById('current-sensitivity').textContent = d.sensitivity.toFixed(0) + ' milli-g';
+          
+          document.getElementById('maxArrows').value = d.maxArrows;
+          document.getElementById('sensitivity').value = d.sensitivity;
+          document.getElementById('sensitivityValue').textContent = d.sensitivity.toFixed(0) + ' milli-g';
+        }).catch(e => {
+          console.error('Error loading status:', e);
+          document.getElementById('current-arrows').textContent = 'Error';
+          document.getElementById('current-sensitivity').textContent = 'Error';
+        });
+      }
+      
+      function updateSensitivityDisplay() {
+        const value = document.getElementById('sensitivity').value;
+        document.getElementById('sensitivityValue').textContent = value + ' milli-g';
+      }
+      
+      function saveConfig(event) {
+        event.preventDefault();
+        const maxArrows = document.getElementById('maxArrows').value;
+        const sensitivity = document.getElementById('sensitivity').value;
+        
+        if (!maxArrows || maxArrows < 1) {
+          showMessage('Please enter a valid number of arrows (minimum 1)', 'error');
+          return;
+        }
+        
+        const formData = new URLSearchParams();
+        formData.append('maxArrows', maxArrows);
+        formData.append('sensitivity', sensitivity);
+        
+        document.getElementById('save-btn').disabled = true;
+        document.getElementById('save-btn').textContent = 'Saving...';
+        
+        fetch('/device-settings-save', {
+          method: 'POST',
+          body: formData,
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        })
+        .then(response => response.text())
+        .then(data => {
+          showMessage('Device settings saved successfully!', 'success');
+          document.getElementById('save-btn').disabled = false;
+          document.getElementById('save-btn').textContent = 'Save';
+          loadStatus();
+        })
+        .catch(error => {
+          showMessage('Error saving device settings: ' + error, 'error');
+          document.getElementById('save-btn').disabled = false;
+          document.getElementById('save-btn').textContent = 'Save';
+        });
+      }
+      
+      function resetToDefaults() {
+        if (!confirm('Are you sure you want to reset to default settings? (10 arrows, 1200 milli-g sensitivity)')) {
+          return;
+        }
+        
+        document.getElementById('maxArrows').value = 10;
+        document.getElementById('sensitivity').value = 1200;
+        updateSensitivityDisplay();
+        showMessage('Settings reset to defaults. Click Save to apply.', 'success');
+      }
+      
+      function showMessage(text, type) {
+        const msgDiv = document.getElementById('message');
+        msgDiv.textContent = text;
+        msgDiv.className = 'message ' + type;
+        msgDiv.style.display = 'block';
+      }
+      
+      window.onload = loadStatus;
+    </script>
+    </head><body>
+    <h1>Device Settings</h1>
+    
+    <div class='status-box'>
+      <strong>Current Settings:</strong>
+      <p><strong>Number of Arrows:</strong> <span id='current-arrows'>Loading...</span></p>
+      <p><strong>Sensitivity Threshold:</strong> <span id='current-sensitivity'>Loading...</span></p>
+    </div>
+    
+    <div id='message' style='display:none;'></div>
+    
+    <h2>Configure Timer Settings</h2>
+    <form onsubmit='saveConfig(event)'>
+      <div class='form-group'>
+        <label for='maxArrows'>Number of Arrows:</label>
+        <input type='number' id='maxArrows' name='maxArrows' placeholder='10' min='1' max='50' step='1' value='10'>
+        <div class='info'>Set how many arrows to count before stopping the timer (default: 10)</div>
+      </div>
+      
+      <div class='form-group'>
+        <label for='sensitivity'>Sensitivity Threshold:</label>
+        <div class='slider-container'>
+          <input type='range' id='sensitivity' name='sensitivity' min='500' max='1500' step='10' value='1200' oninput='updateSensitivityDisplay()'>
+          <span class='slider-value' id='sensitivityValue'>1200 milli-g</span>
+        </div>
+        <div class='info'>Adjust the acceleration threshold for detecting arrow impacts (500-1500 milli-g, default: 1200)</div>
+        <div class='info' style='margin-top: 0.5em;'>
+          <strong>Lower values</strong> = more sensitive (may detect false positives)<br>
+          <strong>Higher values</strong> = less sensitive (may miss softer impacts)
+        </div>
+      </div>
+      
+      <button type='submit' class='btn-primary' id='save-btn'>Save</button>
+      <button type='button' class='btn-secondary' onclick='resetToDefaults()'>Reset to Defaults</button>
+    </form>
+    
+    <div class='divider'>
+      <a href='/' class='nav-btn'>Back to Timer</a>
+    </div>
+    
+    <div class='info-box' style='background:#fff3cd;'>
+      <strong>Note:</strong> These settings control the basic operation of the arrow timer device. 
+      The number of arrows determines when the timer stops counting, and the sensitivity threshold controls 
+      how strong an impact must be to register as an arrow hit.
+      <br><br>
+      All settings are stored persistently and will be retained after device restart or power loss.
+      <br><br>
+      <strong>Tip:</strong> If the timer is too sensitive (counting accidental bumps) or not sensitive enough 
+      (missing arrow impacts), adjust the sensitivity threshold. Start with small adjustments of ±50-100 milli-g.
     </div>
     </body></html>
   )rawliteral";

@@ -14,6 +14,10 @@ int points = 0;
 unsigned long startTime = 0;
 float duration = 0;
 bool finished = false;
+
+// Configurable settings
+int maxArrows = 10;
+float sensitivityThreshold = 1200.0;
 // Store last 5 durations
 #define MAX_ATTEMPTS 5
 float lastDurations[MAX_ATTEMPTS] = {0};
@@ -168,6 +172,10 @@ void setup() {
   tournamentId = preferences.getInt("tournamentId", -1);
   apiDomain = preferences.getString("apiDomain", "archers.himmelix.ch");
   
+  // Load device settings
+  maxArrows = preferences.getInt("maxArrows", 10);
+  sensitivityThreshold = preferences.getFloat("sensitivity", 1200.0);
+  
   bool connected = false;
   if (savedSSID.length() > 0) {
     connected = connectToWiFi(savedSSID, savedPassword);
@@ -234,6 +242,36 @@ void setup() {
     server.send(200, "text/plain", "WiFi configuration cleared. Device will restart in AP mode...");
     delay(1000);
     ESP.restart();
+  });
+  
+  // Device settings endpoints
+  server.on("/device-settings-status", HTTP_GET, []() {
+    String json = "{";
+    json += "\"maxArrows\":" + String(maxArrows);
+    json += ",\"sensitivity\":" + String(sensitivityThreshold, 1);
+    json += "}";
+    server.send(200, "application/json", json);
+  });
+  
+  server.on("/device-settings-save", HTTP_POST, []() {
+    if (server.hasArg("maxArrows") && server.hasArg("sensitivity")) {
+      maxArrows = server.arg("maxArrows").toInt();
+      sensitivityThreshold = server.arg("sensitivity").toFloat();
+      
+      // Validate ranges
+      if (maxArrows < 1) maxArrows = 1;
+      if (maxArrows > 50) maxArrows = 50;
+      if (sensitivityThreshold < 500.0) sensitivityThreshold = 500.0;
+      if (sensitivityThreshold > 1500.0) sensitivityThreshold = 1500.0;
+      
+      // Save to preferences
+      preferences.putInt("maxArrows", maxArrows);
+      preferences.putFloat("sensitivity", sensitivityThreshold);
+      
+      server.send(200, "text/plain", "Device settings saved successfully");
+    } else {
+      server.send(400, "text/plain", "Missing parameters");
+    }
   });
   
   // Tournament endpoints
@@ -415,7 +453,7 @@ void setup() {
 void loop() {
 
   M5.update();
-  if (arrows < 10) {
+  if (arrows < maxArrows) {
     updateScreenRotation();
   }
   server.handleClient();
@@ -512,13 +550,13 @@ void loop() {
     M5.Imu.getAccelData(&accX, &accY, &accZ);
     float strength = sqrt(accX * accX + accY * accY + accZ * accZ) * 1000; // Convert to milli-g
 
-    if (arrows < 10) {
-      if (strength > 1200) {
+    if (arrows < maxArrows) {
+      if (strength > sensitivityThreshold) {
         arrows++;
         if (arrows == 1) {
           startTime = millis();
         }
-        if (arrows == 10) {
+        if (arrows == maxArrows) {
           duration = (millis() - startTime) / 1000.0;
           finished = true;
           // Do not store attempt yet, wait for points input and reset
@@ -547,6 +585,6 @@ void loop() {
     // After 10 arrows, do nothing until reset (no repeated LCD updates)
     // Wait for reset, but do not block
   }
-  delay(20); // Main loop delay
+  delay(5); // Main loop delay
 }
 
